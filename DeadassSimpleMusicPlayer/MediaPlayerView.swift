@@ -5,6 +5,7 @@
 //  Created by Ky on 2024-06-08.
 //
 
+import Combine
 import SwiftUI
 import AVKit
 
@@ -24,6 +25,9 @@ struct MediaPlayerView: View {
     @State
     private var player = AVPlayer()
     
+    @State
+    private var sinks: Set<AnyCancellable> = []
+    
     
     var body: some View {
         VStack {
@@ -33,9 +37,8 @@ struct MediaPlayerView: View {
                 Button("Browse") {
                     showFileBrowser = true
                 }
-                Button("Play/Pause") {
+                Button(isPlaying ? "Pause" : "Play") {
                     isPlaying ? player.pause() : player.play()
-                    isPlaying.toggle()
                 }
             }
         }
@@ -68,5 +71,19 @@ struct MediaPlayerView: View {
                 print(failure)
             }
         }
+        
+        
+        .onAppear {
+            player.publisher(for: \.rate).sink { rate in
+                isPlaying = rate > 0
+            }
+            .store(in: &sinks)
+        }
     }
+}
+
+
+
+#Preview {
+    MediaPlayerView()
 }

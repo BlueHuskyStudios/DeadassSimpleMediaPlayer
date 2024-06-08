@@ -7,11 +7,13 @@
 
 import SwiftUI
 
+
+
 @main
 struct DeadassSimpleMusicPlayerApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MediaPlayerView()
         }
     }
 }

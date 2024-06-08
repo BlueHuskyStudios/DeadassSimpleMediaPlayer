@@ -8,18 +8,21 @@
 
 /* Begin PBXBuildFile section */
 		B9B6F0DC2C1511390093BAED /* DeadassSimpleMusicPlayerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B6F0DB2C1511390093BAED /* DeadassSimpleMusicPlayerApp.swift */; };
-		B9B6F0DE2C1511390093BAED /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B6F0DD2C1511390093BAED /* ContentView.swift */; };
+		B9B6F0DE2C1511390093BAED /* MediaPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B6F0DD2C1511390093BAED /* MediaPlayerView.swift */; };
 		B9B6F0E02C15113C0093BAED /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B9B6F0DF2C15113C0093BAED /* Assets.xcassets */; };
 		B9B6F0E42C15113C0093BAED /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B9B6F0E32C15113C0093BAED /* Preview Assets.xcassets */; };
+		B9B6F0EE2C151DA00093BAED /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B6F0ED2C151DA00093BAED /* ContentView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		B9B6F0D82C1511390093BAED /* DeadassSimpleMusicPlayer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DeadassSimpleMusicPlayer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B9B6F0DB2C1511390093BAED /* DeadassSimpleMusicPlayerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeadassSimpleMusicPlayerApp.swift; sourceTree = "<group>"; };
-		B9B6F0DD2C1511390093BAED /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		B9B6F0DD2C1511390093BAED /* MediaPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaPlayerView.swift; sourceTree = "<group>"; };
 		B9B6F0DF2C15113C0093BAED /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B9B6F0E12C15113C0093BAED /* DeadassSimpleMusicPlayer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DeadassSimpleMusicPlayer.entitlements; sourceTree = "<group>"; };
 		B9B6F0E32C15113C0093BAED /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		B9B6F0EA2C151D140093BAED /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		B9B6F0ED2C151DA00093BAED /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -52,8 +55,10 @@
 		B9B6F0DA2C1511390093BAED /* DeadassSimpleMusicPlayer */ = {
 			isa = PBXGroup;
 			children = (
+				B9B6F0EA2C151D140093BAED /* Info.plist */,
 				B9B6F0DB2C1511390093BAED /* DeadassSimpleMusicPlayerApp.swift */,
-				B9B6F0DD2C1511390093BAED /* ContentView.swift */,
+				B9B6F0DD2C1511390093BAED /* MediaPlayerView.swift */,
+				B9B6F0ED2C151DA00093BAED /* ContentView.swift */,
 				B9B6F0DF2C15113C0093BAED /* Assets.xcassets */,
 				B9B6F0E12C15113C0093BAED /* DeadassSimpleMusicPlayer.entitlements */,
 				B9B6F0E22C15113C0093BAED /* Preview Content */,
@@ -139,8 +144,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B9B6F0DE2C1511390093BAED /* ContentView.swift in Sources */,
+				B9B6F0DE2C1511390093BAED /* MediaPlayerView.swift in Sources */,
 				B9B6F0DC2C1511390093BAED /* DeadassSimpleMusicPlayerApp.swift in Sources */,
+				B9B6F0EE2C151DA00093BAED /* ContentView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -274,6 +280,9 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = DeadassSimpleMusicPlayer/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Deadass-Simple Music Player";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -288,7 +297,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.5;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = me.kyleggiero.DeadassSimpleMusicPlayer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -312,6 +321,9 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = DeadassSimpleMusicPlayer/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Deadass-Simple Music Player";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -326,7 +338,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.5;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = me.kyleggiero.DeadassSimpleMusicPlayer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
