@@ -31,16 +31,30 @@ struct MediaPlayerView: View {
     
     var body: some View {
         VStack {
-            VideoPlayer(player: player)
+            VideoPlayer(player: player) /*{
+                Button("Test") { print("success") }
+            }*/
             
-            HStack {
-                Button("Browse") {
-                    showFileBrowser = true
+            ZStack {
+                HStack {
+                    Button {
+                        showFileBrowser = true
+                    } label: {
+                        Label("Open", systemImage: "folder")
+                    }
+                    
+                    Spacer()
                 }
-                Button(isPlaying ? "Pause" : "Play") {
+                .padding(.horizontal)
+                
+                Button {
                     isPlaying ? player.pause() : player.play()
+                } label: {
+                    Image(systemName: isPlaying ? "pause.fill" : "play.fill")
                 }
+                .buttonStyle(.borderedProminent)
             }
+            .controlSize(.extraLarge)
         }
         
         
@@ -58,6 +72,7 @@ struct MediaPlayerView: View {
             }
             
             player.replaceCurrentItem(with: .init(url: newUrl))
+            player.seek(to: .zero)
         }
         
         
@@ -78,6 +93,9 @@ struct MediaPlayerView: View {
                 isPlaying = rate > 0
             }
             .store(in: &sinks)
+            
+            player.audiovisualBackgroundPlaybackPolicy = .continuesIfPossible
+            
         }
     }
 }
