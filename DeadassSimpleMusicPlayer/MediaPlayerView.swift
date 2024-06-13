@@ -132,13 +132,8 @@ private extension MediaPlayerView {
     
     
     var playerView: some View {
-//        VStack {
-//            Spacer()
-            VideoPlayer(player: player)
-//                .frame(minWidth: /*@START_MENU_TOKEN@*/0/*@END_MENU_TOKEN@*/, idealWidth: /*@START_MENU_TOKEN@*/100/*@END_MENU_TOKEN@*/)
-                .aspectRatio(16/9, contentMode: .fit)
-//            Spacer()
-//        }
+        VideoPlayer(player: player)
+            .aspectRatio(16/9, contentMode: .fit)
     }
 }
 
