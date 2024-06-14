@@ -27,7 +27,7 @@ public final class AsyncMetadata: @unchecked Sendable { // Pro tip: periodically
     /// The metadata that this extracted & parsed from the asset
     private var __cache: [Key<Any>.ID : MetadataSearchResult<any Sendable>] = [:] {
         didSet {
-            publisher.send(Void())
+            metadataUpdatePublisher.send(Void())
         }
     }
     
