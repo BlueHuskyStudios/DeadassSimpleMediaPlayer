@@ -77,11 +77,6 @@ struct MediaPlayerView: View {
         }
         
         
-        .onChange(of: currentMediaMetadata) { oldValue, newValue in
-            // ?
-        }
-        
-        
         .onAppear {
             player.publisher(for: \.rate).sink { rate in
                 isPlaying = rate > 0
@@ -141,6 +136,9 @@ private extension MediaPlayerView {
 
 private extension MediaPlayerView {
     
+    /// Returns the current state of searching for the given metadata, including the found metadata itself
+    ///
+    /// - Parameter key: Identifies the metadata you want
     func metadata<Value>(_ key: AsyncMetadataKey<Value>) -> MetadataSearchResult<Value>? {
         guard nil != currentMediaUrl else { return nil }
         switch currentMediaMetadata?.get(key) {
