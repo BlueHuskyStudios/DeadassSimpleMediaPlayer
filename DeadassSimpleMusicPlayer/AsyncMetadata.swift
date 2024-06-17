@@ -406,4 +406,4 @@ public extension AVAsset {
 
 
 // MARK: -
-extension AVMetadataItem: @unchecked Sendable {}
+extension AVMetadataItem: @unchecked @retroactive Sendable {}

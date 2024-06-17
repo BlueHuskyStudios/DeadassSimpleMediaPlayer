@@ -7,7 +7,7 @@
 
 import Combine
 import SwiftUI
-@preconcurrency import AVKit
+import AVKit
 
 import SimpleLogging
 
