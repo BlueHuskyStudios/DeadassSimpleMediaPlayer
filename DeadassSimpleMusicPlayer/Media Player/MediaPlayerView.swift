@@ -15,10 +15,12 @@ import SimpleLogging
 
 
 
+/// An all-in-one media player for SwiftUI
 struct MediaPlayerView: View {
     
     // MARK: API
     
+    /// The URL pointing to the media currently being played
     @Binding
     var currentMediaUrl: URL?
     
@@ -302,7 +304,7 @@ private extension MediaPlayerView {
 
 // MARK: - Control Center, Live Activites, Dynamic Island, etc.
 
-extension MediaPlayerView {
+private extension MediaPlayerView {
     func setupRemoteTransportControls() {
         // Get the shared MPRemoteCommandCenter
         let commandCenter = MPRemoteCommandCenter.shared()
