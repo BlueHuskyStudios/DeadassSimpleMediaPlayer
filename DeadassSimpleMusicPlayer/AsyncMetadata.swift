@@ -9,12 +9,15 @@ import Combine
 import Foundation
 import AVKit
 
+import CrossKitTypes
 import LazyContainers
 import SimpleLogging
+import SpecialString
 
 
 
 /// An easy-to-use abstraction of fetching metadata from an `AVAsset`
+#if swift(>=6)
 @Observable
 public final class AsyncMetadata: @unchecked Sendable { // Pro tip: periodically remove `Sendable` conformance to make sure things are okay. This is only `@unchecked` for `__cache` and `Sendable` for `get(_:)`. We also make Our own checks for race conditions in `__findMetadata(_:)`
     
@@ -25,9 +28,13 @@ public final class AsyncMetadata: @unchecked Sendable { // Pro tip: periodically
     private let assetMetadata: [AVMetadataItem]
     
     /// The metadata that this extracted & parsed from the asset
-    private var __cache: [Key<Any>.ID : MetadataSearchResult<any Sendable>] = [:] {
+    private var __cache: [AsyncMetadataKeyId : MetadataSearchResult<any Sendable>] = [:] {
         didSet {
-            metadataUpdatePublisher.send(Void())
+            Task {
+                await MainActor.run {
+                    metadataUpdatePublisher.send(Void())
+                }
+            }
         }
     }
     
@@ -39,6 +46,36 @@ public final class AsyncMetadata: @unchecked Sendable { // Pro tip: periodically
         self.assetMetadata = try await asset.load(.metadata)
     }
 }
+#else
+public final class AsyncMetadata: @unchecked Sendable, Observable { // Pro tip: periodically remove `Sendable` conformance to make sure things are okay. This is only `@unchecked` for `__cache` and `Sendable` for `get(_:)`. We also make Our own checks for race conditions in `__findMetadata(_:)`
+    
+    /// Aids in determining if a `AsyncMetadata` is unique amongst others
+    private let id = UUID()
+    
+    /// The metadata retrieved from the asset when this was created
+    private let assetMetadata: [AVMetadataItem]
+    
+    /// The metadata that this extracted & parsed from the asset
+    @Published
+    private var __cache: [AsyncMetadataKeyId : MetadataSearchResult<any Sendable>] = [:] {
+        didSet {
+            Task {
+                await MainActor.run {
+                    metadataUpdatePublisher.send(Void())
+                }
+            }
+        }
+    }
+    
+    /// Alerts subscribers when this updates
+    private var metadataUpdatePublisher = PassthroughSubject<Void, Never>()
+    
+    
+    init(extractingMetadataFromAsset asset: AVAsset) async throws {
+        self.assetMetadata = try await asset.load(.metadata)
+    }
+}
+#endif
 
 
 
@@ -60,20 +97,28 @@ public extension AsyncMetadata {
 /// Relates to a metadata value, allowing you to look up a value by its key.
 ///
 /// This also allows one key to map to many different metadata values in order of preference (e.g. common track title vs iTunes song name vs QuickTime user-specified track name vs etc...)
-public struct AsyncMetadataKey<Value>: Hashable, Identifiable, Sendable {
+public struct AsyncMetadataKey<Value: Sendable>: Identifiable, Sendable {
     
     /// Uniquely identifies this key amongst all other `AsyncMetadataKey`s
-    public let id: String
+    public let id: Id
     
     /// The AVKit metadata identifiers which correspond to this key, sorted with the most-preferred first.
     ///
     /// This allows one key to map to many different metadata values in order of preference (e.g. common track title vs iTunes song name vs QuickTime user-specified track name vs etc...)
     public let identifiers: [AVMetadataIdentifier]
     
-    
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-    }
+    public let retrievalApproach: AsyncMetadata.RetrievalApproach<Value> = .justLoadValue
+}
+
+
+
+public typealias AsyncMetadataKeyId = SpecialString<AsyncMetadataIdSpecialType>
+public struct AsyncMetadataIdSpecialType: SpecialStringSpecialType, Sendable {}
+
+
+
+public extension AsyncMetadataKey {
+    typealias Id = AsyncMetadataKeyId
 }
 
 
@@ -83,6 +128,23 @@ public extension AsyncMetadata {
 }
 
 
+public extension AsyncMetadata {
+    
+    /// How to retrieve the metadata from the system
+    enum RetrievalApproach<Value: Sendable>: Sendable {
+        
+        /// Just directly loads the value with ``AVMetadataItem.load(_:)`` ``AVPartialAsyncProperty.value`` and attempts to cast it to `Value`
+        case justLoadValue
+        
+        /// Loads the value with ``AVMetadataItem.load(_:)`` ``AVPartialAsyncProperty.dataValue``, and then sends that `Data` to the given function
+        case loadDataValue(initializer: @Sendable (Data) -> Value)
+        
+//        case loadSomethingElse(AVPartialAsyncProperty)
+    }
+}
+
+
+// MARK: Default keys
 
 public extension AsyncMetadataKey where Value == String {
     /// The media's title (or name)
@@ -129,6 +191,18 @@ public extension AsyncMetadataKey where Value == String {
 
 
 
+public extension AsyncMetadataKey where Value == NativeImage? {
+    
+    /// The media's title (or name)
+    static let image = Self(id: "image", identifiers: [
+        .identifier3GPUserDataThumbnail,
+        .iTunesMetadataCoverArt,
+        .id3MetadataAttachedPicture,
+    ])
+}
+
+
+
 // MARK: - 🌎 API / Retrieving values
 
 public extension AsyncMetadata {
@@ -144,7 +218,7 @@ public extension AsyncMetadata {
     ///
     /// - Parameter key: Identifies exactly what metadata you want to retrieve, including its Type
     /// - Returns:       The current state/result of searching for that metadata.
-    func get<Value>(_ key: Key<Value>) -> MetadataSearchResult<Value> {
+    func get<Value: Sendable>(_ key: Key<Value>) -> MetadataSearchResult<Value> {
         if let cached = __cache[key.id] {
             return cached.castValue() ?? .notFound
         }
@@ -275,6 +349,21 @@ public enum MetadataSearchResult<Value: Sendable>: Sendable {
 
 
 
+public extension MetadataSearchResult {
+    var value: Value? {
+        switch self {
+        case .stillSearching,
+                .notFound:
+            nil
+            
+        case .found(let value):
+            value
+        }
+    }
+}
+
+
+
 private extension MetadataSearchResult {
     /// Returns a version of this search result where the value remains the same but is re-cast  as any type
     func erasedToAnyValue() -> MetadataSearchResult<any Sendable> {
@@ -328,6 +417,22 @@ extension AsyncMetadata: Equatable {
     public static func == (lhs: AsyncMetadata, rhs: AsyncMetadata) -> Bool {
         lhs.id == rhs.id
         && lhs.__cache == rhs.__cache
+    }
+}
+
+
+
+extension AsyncMetadataKey: Equatable {
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
+
+
+extension AsyncMetadataKey: Hashable {
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
 }
 
@@ -402,8 +507,3 @@ public extension AVAsset {
         try await AsyncMetadata(extractingMetadataFromAsset: self)
     }
 }
-
-
-
-// MARK: -
-extension AVMetadataItem: @unchecked @retroactive Sendable {}
