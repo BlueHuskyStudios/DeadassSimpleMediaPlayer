@@ -10,15 +10,36 @@
 		B96595B92C18BD4E006348E6 /* AsyncMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = B96595B82C18BD4E006348E6 /* AsyncMetadata.swift */; };
 		B96595BC2C18C071006348E6 /* LazyContainers in Frameworks */ = {isa = PBXBuildFile; productRef = B96595BB2C18C071006348E6 /* LazyContainers */; };
 		B96595BF2C18DFF7006348E6 /* SimpleLogging in Frameworks */ = {isa = PBXBuildFile; productRef = B96595BE2C18DFF7006348E6 /* SimpleLogging */; };
+		B989BF792C223748007D589E /* AVMediaPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B989BF782C223748007D589E /* AVMediaPlayer.swift */; };
+		B989BF7C2C22411D007D589E /* CrossKitTypes in Frameworks */ = {isa = PBXBuildFile; productRef = B989BF7B2C22411D007D589E /* CrossKitTypes */; };
+		B994DD7E2C38E1D1001C151D /* MediaPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B6F0DD2C1511390093BAED /* MediaPlayerView.swift */; };
+		B994DD7F2C38E1D1001C151D /* AVKit + Sendable.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9C6C1772C336BFD009F6AC7 /* AVKit + Sendable.swift */; };
+		B994DD802C38E1D1001C151D /* AsyncMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = B96595B82C18BD4E006348E6 /* AsyncMetadata.swift */; };
+		B994DD812C38E1D1001C151D /* AVMediaPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B989BF782C223748007D589E /* AVMediaPlayer.swift */; };
+		B994DD822C38E1D1001C151D /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B6F0DB2C1511390093BAED /* App.swift */; };
+		B994DD832C38E1D1001C151D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B6F0ED2C151DA00093BAED /* ContentView.swift */; };
+		B994DD852C38E1D1001C151D /* CrossKitTypes in Frameworks */ = {isa = PBXBuildFile; productRef = B994DD7B2C38E1D1001C151D /* CrossKitTypes */; };
+		B994DD862C38E1D1001C151D /* SimpleLogging in Frameworks */ = {isa = PBXBuildFile; productRef = B994DD792C38E1D1001C151D /* SimpleLogging */; };
+		B994DD872C38E1D1001C151D /* LazyContainers in Frameworks */ = {isa = PBXBuildFile; productRef = B994DD772C38E1D1001C151D /* LazyContainers */; };
+		B994DD892C38E1D1001C151D /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B9B6F0E32C15113C0093BAED /* Preview Assets.xcassets */; };
+		B994DD8A2C38E1D1001C151D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B9B6F0DF2C15113C0093BAED /* Assets.xcassets */; };
 		B9B6F0DC2C1511390093BAED /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B6F0DB2C1511390093BAED /* App.swift */; };
 		B9B6F0DE2C1511390093BAED /* MediaPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B6F0DD2C1511390093BAED /* MediaPlayerView.swift */; };
 		B9B6F0E02C15113C0093BAED /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B9B6F0DF2C15113C0093BAED /* Assets.xcassets */; };
 		B9B6F0E42C15113C0093BAED /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B9B6F0E32C15113C0093BAED /* Preview Assets.xcassets */; };
 		B9B6F0EE2C151DA00093BAED /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B6F0ED2C151DA00093BAED /* ContentView.swift */; };
+		B9B940AA2C3C4DDB00E54F32 /* onRecieve + nil.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B940A92C3C4DDB00E54F32 /* onRecieve + nil.swift */; };
+		B9B940AB2C3C4DDB00E54F32 /* onRecieve + nil.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B940A92C3C4DDB00E54F32 /* onRecieve + nil.swift */; };
+		B9B940AE2C3C526800E54F32 /* SpecialString in Frameworks */ = {isa = PBXBuildFile; productRef = B9B940AD2C3C526800E54F32 /* SpecialString */; };
+		B9B940B12C3C527C00E54F32 /* SpecialString in Frameworks */ = {isa = PBXBuildFile; productRef = B9B940B02C3C527C00E54F32 /* SpecialString */; };
+		B9C6C1782C336BFD009F6AC7 /* AVKit + Sendable.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9C6C1772C336BFD009F6AC7 /* AVKit + Sendable.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		B96595B82C18BD4E006348E6 /* AsyncMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncMetadata.swift; sourceTree = "<group>"; };
+		B989BF782C223748007D589E /* AVMediaPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVMediaPlayer.swift; sourceTree = "<group>"; };
+		B994DD8E2C38E1D1001C151D /* Dead-Simple Media Player for iOS 16.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Dead-Simple Media Player for iOS 16.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B994DD8F2C38E1D2001C151D /* iOS 16-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "iOS 16-Info.plist"; path = "/Users/kyleggiero/KyDrive/Library/Projects/From Us/Apps/DeadassSimpleMusicPlayer/DeadassSimpleMusicPlayer/iOS 16-Info.plist"; sourceTree = "<absolute>"; };
 		B9B6F0D82C1511390093BAED /* Dead-Simple Media Player.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Dead-Simple Media Player.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B9B6F0DB2C1511390093BAED /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		B9B6F0DD2C1511390093BAED /* MediaPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaPlayerView.swift; sourceTree = "<group>"; };
@@ -27,13 +48,28 @@
 		B9B6F0E32C15113C0093BAED /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		B9B6F0EA2C151D140093BAED /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		B9B6F0ED2C151DA00093BAED /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		B9B940A92C3C4DDB00E54F32 /* onRecieve + nil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "onRecieve + nil.swift"; sourceTree = "<group>"; };
+		B9C6C1772C336BFD009F6AC7 /* AVKit + Sendable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AVKit + Sendable.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		B994DD842C38E1D1001C151D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B994DD852C38E1D1001C151D /* CrossKitTypes in Frameworks */,
+				B9B940AE2C3C526800E54F32 /* SpecialString in Frameworks */,
+				B994DD862C38E1D1001C151D /* SimpleLogging in Frameworks */,
+				B994DD872C38E1D1001C151D /* LazyContainers in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B9B6F0D52C1511390093BAED /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B989BF7C2C22411D007D589E /* CrossKitTypes in Frameworks */,
+				B9B940B12C3C527C00E54F32 /* SpecialString in Frameworks */,
 				B96595BF2C18DFF7006348E6 /* SimpleLogging in Frameworks */,
 				B96595BC2C18C071006348E6 /* LazyContainers in Frameworks */,
 			);
@@ -42,11 +78,21 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		B989BF772C223725007D589E /* Media Player */ = {
+			isa = PBXGroup;
+			children = (
+				B9B6F0DD2C1511390093BAED /* MediaPlayerView.swift */,
+				B989BF782C223748007D589E /* AVMediaPlayer.swift */,
+			);
+			path = "Media Player";
+			sourceTree = "<group>";
+		};
 		B9B6F0CF2C1511390093BAED = {
 			isa = PBXGroup;
 			children = (
 				B9B6F0DA2C1511390093BAED /* DeadassSimpleMusicPlayer */,
 				B9B6F0D92C1511390093BAED /* Products */,
+				B9B940AF2C3C527C00E54F32 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -54,6 +100,7 @@
 			isa = PBXGroup;
 			children = (
 				B9B6F0D82C1511390093BAED /* Dead-Simple Media Player.app */,
+				B994DD8E2C38E1D1001C151D /* Dead-Simple Media Player for iOS 16.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -62,10 +109,13 @@
 			isa = PBXGroup;
 			children = (
 				B9B6F0EA2C151D140093BAED /* Info.plist */,
+				B994DD8F2C38E1D2001C151D /* iOS 16-Info.plist */,
 				B9B6F0DB2C1511390093BAED /* App.swift */,
-				B9B6F0DD2C1511390093BAED /* MediaPlayerView.swift */,
+				B989BF772C223725007D589E /* Media Player */,
+				B9B940A72C3C4DB300E54F32 /* Extensions */,
 				B9B6F0ED2C151DA00093BAED /* ContentView.swift */,
 				B96595B82C18BD4E006348E6 /* AsyncMetadata.swift */,
+				B9C6C1772C336BFD009F6AC7 /* AVKit + Sendable.swift */,
 				B9B6F0DF2C15113C0093BAED /* Assets.xcassets */,
 				B9B6F0E12C15113C0093BAED /* DeadassSimpleMusicPlayer.entitlements */,
 				B9B6F0E22C15113C0093BAED /* Preview Content */,
@@ -81,9 +131,55 @@
 			path = "Preview Content";
 			sourceTree = "<group>";
 		};
+		B9B940A72C3C4DB300E54F32 /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				B9B940A82C3C4DBB00E54F32 /* SwiftUI */,
+			);
+			path = Extensions;
+			sourceTree = "<group>";
+		};
+		B9B940A82C3C4DBB00E54F32 /* SwiftUI */ = {
+			isa = PBXGroup;
+			children = (
+				B9B940A92C3C4DDB00E54F32 /* onRecieve + nil.swift */,
+			);
+			path = SwiftUI;
+			sourceTree = "<group>";
+		};
+		B9B940AF2C3C527C00E54F32 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		B994DD762C38E1D1001C151D /* Dead-Simple Media Player for iOS 16 */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B994DD8B2C38E1D1001C151D /* Build configuration list for PBXNativeTarget "Dead-Simple Media Player for iOS 16" */;
+			buildPhases = (
+				B994DD7D2C38E1D1001C151D /* Sources */,
+				B994DD842C38E1D1001C151D /* Frameworks */,
+				B994DD882C38E1D1001C151D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Dead-Simple Media Player for iOS 16";
+			packageProductDependencies = (
+				B994DD772C38E1D1001C151D /* LazyContainers */,
+				B994DD792C38E1D1001C151D /* SimpleLogging */,
+				B994DD7B2C38E1D1001C151D /* CrossKitTypes */,
+				B9B940AD2C3C526800E54F32 /* SpecialString */,
+			);
+			productName = DeadassSimpleMusicPlayer;
+			productReference = B994DD8E2C38E1D1001C151D /* Dead-Simple Media Player for iOS 16.app */;
+			productType = "com.apple.product-type.application";
+		};
 		B9B6F0D72C1511390093BAED /* Dead-Simple Media Player */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = B9B6F0E72C15113C0093BAED /* Build configuration list for PBXNativeTarget "Dead-Simple Media Player" */;
@@ -100,6 +196,8 @@
 			packageProductDependencies = (
 				B96595BB2C18C071006348E6 /* LazyContainers */,
 				B96595BE2C18DFF7006348E6 /* SimpleLogging */,
+				B989BF7B2C22411D007D589E /* CrossKitTypes */,
+				B9B940B02C3C527C00E54F32 /* SpecialString */,
 			);
 			productName = DeadassSimpleMusicPlayer;
 			productReference = B9B6F0D82C1511390093BAED /* Dead-Simple Media Player.app */;
@@ -132,17 +230,29 @@
 			packageReferences = (
 				B96595BA2C18C071006348E6 /* XCRemoteSwiftPackageReference "Swift-Lazy-Containers" */,
 				B96595BD2C18DFF7006348E6 /* XCRemoteSwiftPackageReference "Swift-Simple-Logging" */,
+				B989BF7A2C22411D007D589E /* XCRemoteSwiftPackageReference "Swift-Cross-Kit-Types" */,
+				B9B940AC2C3C526800E54F32 /* XCRemoteSwiftPackageReference "Swift-Special-String" */,
 			);
 			productRefGroup = B9B6F0D92C1511390093BAED /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				B9B6F0D72C1511390093BAED /* Dead-Simple Media Player */,
+				B994DD762C38E1D1001C151D /* Dead-Simple Media Player for iOS 16 */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		B994DD882C38E1D1001C151D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B994DD892C38E1D1001C151D /* Preview Assets.xcassets in Resources */,
+				B994DD8A2C38E1D1001C151D /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B9B6F0D62C1511390093BAED /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -155,12 +265,29 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		B994DD7D2C38E1D1001C151D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B994DD7E2C38E1D1001C151D /* MediaPlayerView.swift in Sources */,
+				B9B940AB2C3C4DDB00E54F32 /* onRecieve + nil.swift in Sources */,
+				B994DD7F2C38E1D1001C151D /* AVKit + Sendable.swift in Sources */,
+				B994DD802C38E1D1001C151D /* AsyncMetadata.swift in Sources */,
+				B994DD812C38E1D1001C151D /* AVMediaPlayer.swift in Sources */,
+				B994DD822C38E1D1001C151D /* App.swift in Sources */,
+				B994DD832C38E1D1001C151D /* ContentView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B9B6F0D42C1511390093BAED /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				B9B6F0DE2C1511390093BAED /* MediaPlayerView.swift in Sources */,
+				B9B940AA2C3C4DDB00E54F32 /* onRecieve + nil.swift in Sources */,
+				B9C6C1782C336BFD009F6AC7 /* AVKit + Sendable.swift in Sources */,
 				B96595B92C18BD4E006348E6 /* AsyncMetadata.swift in Sources */,
+				B989BF792C223748007D589E /* AVMediaPlayer.swift in Sources */,
 				B9B6F0DC2C1511390093BAED /* App.swift in Sources */,
 				B9B6F0EE2C151DA00093BAED /* ContentView.swift in Sources */,
 			);
@@ -169,6 +296,94 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
+		B994DD8C2C38E1D1001C151D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "$(PROJECT_NAME)/$(PROJECT_NAME).entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 00006;
+				DEVELOPMENT_ASSET_PATHS = "\"DeadassSimpleMusicPlayer/Preview Content\"";
+				DEVELOPMENT_TEAM = 26V9MK8TGP;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "$(PROJECT_NAME)/iOS 16-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Dead Simple";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 0.0.3;
+				PRODUCT_BUNDLE_IDENTIFIER = me.kyleggiero.DeadassSimpleMediaPlayer;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B994DD8D2C38E1D1001C151D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "$(PROJECT_NAME)/$(PROJECT_NAME).entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 00006;
+				DEVELOPMENT_ASSET_PATHS = "\"DeadassSimpleMusicPlayer/Preview Content\"";
+				DEVELOPMENT_TEAM = 26V9MK8TGP;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "$(PROJECT_NAME)/iOS 16-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Dead Simple";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 0.0.3;
+				PRODUCT_BUNDLE_IDENTIFIER = me.kyleggiero.DeadassSimpleMediaPlayer;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		B9B6F0E52C15113C0093BAED /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -290,7 +505,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = DeadassSimpleMusicPlayer/DeadassSimpleMusicPlayer.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 00006;
 				DEVELOPMENT_ASSET_PATHS = "\"DeadassSimpleMusicPlayer/Preview Content\"";
 				DEVELOPMENT_TEAM = 26V9MK8TGP;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -312,11 +527,13 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.5;
-				MARKETING_VERSION = 0.0.2;
+				MARKETING_VERSION = 0.0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = me.kyleggiero.DeadassSimpleMediaPlayer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
@@ -332,7 +549,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = DeadassSimpleMusicPlayer/DeadassSimpleMusicPlayer.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 00006;
 				DEVELOPMENT_ASSET_PATHS = "\"DeadassSimpleMusicPlayer/Preview Content\"";
 				DEVELOPMENT_TEAM = 26V9MK8TGP;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -354,11 +571,13 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.5;
-				MARKETING_VERSION = 0.0.2;
+				MARKETING_VERSION = 0.0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = me.kyleggiero.DeadassSimpleMediaPlayer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
@@ -370,6 +589,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		B994DD8B2C38E1D1001C151D /* Build configuration list for PBXNativeTarget "Dead-Simple Media Player for iOS 16" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B994DD8C2C38E1D1001C151D /* Debug */,
+				B994DD8D2C38E1D1001C151D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		B9B6F0D32C1511390093BAED /* Build configuration list for PBXProject "DeadassSimpleMusicPlayer" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -407,6 +635,46 @@
 				minimumVersion = 0.5.2;
 			};
 		};
+		B989BF7A2C22411D007D589E /* XCRemoteSwiftPackageReference "Swift-Cross-Kit-Types" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RougeWare/Swift-Cross-Kit-Types.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
+		B994DD782C38E1D1001C151D /* XCRemoteSwiftPackageReference "Swift-Lazy-Containers" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RougeWare/Swift-Lazy-Containers.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.1.0;
+			};
+		};
+		B994DD7A2C38E1D1001C151D /* XCRemoteSwiftPackageReference "Swift-Simple-Logging" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RougeWare/Swift-Simple-Logging";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.5.2;
+			};
+		};
+		B994DD7C2C38E1D1001C151D /* XCRemoteSwiftPackageReference "Swift-Cross-Kit-Types" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RougeWare/Swift-Cross-Kit-Types.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
+		B9B940AC2C3C526800E54F32 /* XCRemoteSwiftPackageReference "Swift-Special-String" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RougeWare/Swift-Special-String.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.2.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -419,6 +687,36 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B96595BD2C18DFF7006348E6 /* XCRemoteSwiftPackageReference "Swift-Simple-Logging" */;
 			productName = SimpleLogging;
+		};
+		B989BF7B2C22411D007D589E /* CrossKitTypes */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B989BF7A2C22411D007D589E /* XCRemoteSwiftPackageReference "Swift-Cross-Kit-Types" */;
+			productName = CrossKitTypes;
+		};
+		B994DD772C38E1D1001C151D /* LazyContainers */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B994DD782C38E1D1001C151D /* XCRemoteSwiftPackageReference "Swift-Lazy-Containers" */;
+			productName = LazyContainers;
+		};
+		B994DD792C38E1D1001C151D /* SimpleLogging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B994DD7A2C38E1D1001C151D /* XCRemoteSwiftPackageReference "Swift-Simple-Logging" */;
+			productName = SimpleLogging;
+		};
+		B994DD7B2C38E1D1001C151D /* CrossKitTypes */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B994DD7C2C38E1D1001C151D /* XCRemoteSwiftPackageReference "Swift-Cross-Kit-Types" */;
+			productName = CrossKitTypes;
+		};
+		B9B940AD2C3C526800E54F32 /* SpecialString */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B9B940AC2C3C526800E54F32 /* XCRemoteSwiftPackageReference "Swift-Special-String" */;
+			productName = SpecialString;
+		};
+		B9B940B02C3C527C00E54F32 /* SpecialString */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B9B940AC2C3C526800E54F32 /* XCRemoteSwiftPackageReference "Swift-Special-String" */;
+			productName = SpecialString;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
