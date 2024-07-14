@@ -370,7 +370,7 @@ private extension MediaPlayerView {
 
 // MARK: - Previews
 
-#Preview {
+#Preview("Nothing playing") {
     NavigationStack {
         MediaPlayerView(currentPlaylist: .constant(.empty))
     }

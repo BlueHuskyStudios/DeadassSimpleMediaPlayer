@@ -13,6 +13,10 @@
 		B955C4622C438E4C00637C85 /* SafeCollectionAccess in Frameworks */ = {isa = PBXBuildFile; productRef = B955C4612C438E4C00637C85 /* SafeCollectionAccess */; };
 		B955C4652C43977F00637C85 /* BasicMathTools in Frameworks */ = {isa = PBXBuildFile; productRef = B955C4642C43977F00637C85 /* BasicMathTools */; };
 		B955C4672C43979E00637C85 /* BasicMathTools in Frameworks */ = {isa = PBXBuildFile; productRef = B955C4662C43979E00637C85 /* BasicMathTools */; };
+		B955C46D2C442A7900637C85 /* URL security + sugar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B955C46C2C442A7900637C85 /* URL security + sugar.swift */; };
+		B955C46E2C442A7900637C85 /* URL security + sugar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B955C46C2C442A7900637C85 /* URL security + sugar.swift */; };
+		B955C4702C442C6500637C85 /* FileManager + URL.swift in Sources */ = {isa = PBXBuildFile; fileRef = B955C46F2C442C6500637C85 /* FileManager + URL.swift */; };
+		B955C4712C442C6500637C85 /* FileManager + URL.swift in Sources */ = {isa = PBXBuildFile; fileRef = B955C46F2C442C6500637C85 /* FileManager + URL.swift */; };
 		B96595B92C18BD4E006348E6 /* AsyncMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = B96595B82C18BD4E006348E6 /* AsyncMetadata.swift */; };
 		B96595BC2C18C071006348E6 /* LazyContainers in Frameworks */ = {isa = PBXBuildFile; productRef = B96595BB2C18C071006348E6 /* LazyContainers */; };
 		B96595BF2C18DFF7006348E6 /* SimpleLogging in Frameworks */ = {isa = PBXBuildFile; productRef = B96595BE2C18DFF7006348E6 /* SimpleLogging */; };
@@ -29,6 +33,8 @@
 		B994DD872C38E1D1001C151D /* LazyContainers in Frameworks */ = {isa = PBXBuildFile; productRef = B994DD772C38E1D1001C151D /* LazyContainers */; };
 		B994DD892C38E1D1001C151D /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B9B6F0E32C15113C0093BAED /* Preview Assets.xcassets */; };
 		B994DD8A2C38E1D1001C151D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B9B6F0DF2C15113C0093BAED /* Assets.xcassets */; };
+		B9A6923B2C443DD40032FB7B /* URL + UTType.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A6923A2C443DD40032FB7B /* URL + UTType.swift */; };
+		B9A6923C2C443DD40032FB7B /* URL + UTType.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A6923A2C443DD40032FB7B /* URL + UTType.swift */; };
 		B9B6F0DC2C1511390093BAED /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B6F0DB2C1511390093BAED /* App.swift */; };
 		B9B6F0DE2C1511390093BAED /* MediaPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B6F0DD2C1511390093BAED /* MediaPlayerView.swift */; };
 		B9B6F0E02C15113C0093BAED /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B9B6F0DF2C15113C0093BAED /* Assets.xcassets */; };
@@ -44,10 +50,13 @@
 /* Begin PBXFileReference section */
 		B955C4582C43894900637C85 /* Playlist.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Playlist.swift; sourceTree = "<group>"; };
 		B955C45B2C438C9500637C85 /* Queue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Queue.swift; sourceTree = "<group>"; };
+		B955C46C2C442A7900637C85 /* URL security + sugar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "URL security + sugar.swift"; sourceTree = "<group>"; };
+		B955C46F2C442C6500637C85 /* FileManager + URL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FileManager + URL.swift"; sourceTree = "<group>"; };
 		B96595B82C18BD4E006348E6 /* AsyncMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncMetadata.swift; sourceTree = "<group>"; };
 		B989BF782C223748007D589E /* AVMediaPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVMediaPlayer.swift; sourceTree = "<group>"; };
 		B994DD8E2C38E1D1001C151D /* Dead-Simple Media Player for iOS 16.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Dead-Simple Media Player for iOS 16.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B994DD8F2C38E1D2001C151D /* iOS 16-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "iOS 16-Info.plist"; path = "/Users/kyleggiero/KyDrive/Library/Projects/From Us/Apps/DeadassSimpleMusicPlayer/DeadassSimpleMusicPlayer/iOS 16-Info.plist"; sourceTree = "<absolute>"; };
+		B9A6923A2C443DD40032FB7B /* URL + UTType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "URL + UTType.swift"; sourceTree = "<group>"; };
 		B9B6F0D82C1511390093BAED /* Dead-Simple Media Player.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Dead-Simple Media Player.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B9B6F0DB2C1511390093BAED /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		B9B6F0DD2C1511390093BAED /* MediaPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaPlayerView.swift; sourceTree = "<group>"; };
@@ -90,6 +99,16 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		B955C46A2C442A6100637C85 /* Foundation */ = {
+			isa = PBXGroup;
+			children = (
+				B955C46C2C442A7900637C85 /* URL security + sugar.swift */,
+				B9A6923A2C443DD40032FB7B /* URL + UTType.swift */,
+				B955C46F2C442C6500637C85 /* FileManager + URL.swift */,
+			);
+			path = Foundation;
+			sourceTree = "<group>";
+		};
 		B989BF772C223725007D589E /* Media Player */ = {
 			isa = PBXGroup;
 			children = (
@@ -148,6 +167,7 @@
 		B9B940A72C3C4DB300E54F32 /* Extensions */ = {
 			isa = PBXGroup;
 			children = (
+				B955C46A2C442A6100637C85 /* Foundation */,
 				B9B940A82C3C4DBB00E54F32 /* SwiftUI */,
 			);
 			path = Extensions;
@@ -294,9 +314,12 @@
 				B994DD7F2C38E1D1001C151D /* AVKit + Sendable.swift in Sources */,
 				B994DD802C38E1D1001C151D /* AsyncMetadata.swift in Sources */,
 				B994DD812C38E1D1001C151D /* AVMediaPlayer.swift in Sources */,
+				B9A6923B2C443DD40032FB7B /* URL + UTType.swift in Sources */,
+				B955C46E2C442A7900637C85 /* URL security + sugar.swift in Sources */,
 				B994DD822C38E1D1001C151D /* App.swift in Sources */,
 				B994DD832C38E1D1001C151D /* ContentView.swift in Sources */,
 				B955C45A2C43894900637C85 /* Playlist.swift in Sources */,
+				B955C4712C442C6500637C85 /* FileManager + URL.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -309,9 +332,12 @@
 				B9C6C1782C336BFD009F6AC7 /* AVKit + Sendable.swift in Sources */,
 				B96595B92C18BD4E006348E6 /* AsyncMetadata.swift in Sources */,
 				B989BF792C223748007D589E /* AVMediaPlayer.swift in Sources */,
+				B9A6923C2C443DD40032FB7B /* URL + UTType.swift in Sources */,
+				B955C46D2C442A7900637C85 /* URL security + sugar.swift in Sources */,
 				B9B6F0DC2C1511390093BAED /* App.swift in Sources */,
 				B9B6F0EE2C151DA00093BAED /* ContentView.swift in Sources */,
 				B955C4592C43894900637C85 /* Playlist.swift in Sources */,
+				B955C4702C442C6500637C85 /* FileManager + URL.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

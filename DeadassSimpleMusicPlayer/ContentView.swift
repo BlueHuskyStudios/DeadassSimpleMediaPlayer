@@ -7,6 +7,8 @@
 
 import SwiftUI
 
+import SimpleLogging
+
 
 
 struct ContentView: View {
@@ -15,11 +17,11 @@ struct ContentView: View {
     private var showFileBrowser = false
     
     @State
-    private var currentMediaUrl: URL? = nil
+    private var currentPlaylist: Playlist = .empty
     
     var body: some View {
         NavigationStack {
-            MediaPlayerView(currentMediaUrl: $currentMediaUrl)
+            MediaPlayerView(currentPlaylist: $currentPlaylist)
             
                 .toolbar {
                     ToolbarItem {
@@ -33,14 +35,13 @@ struct ContentView: View {
                 }
             
             
-                .fileImporter(isPresented: $showFileBrowser, allowedContentTypes: [.audiovisualContent]) { result in
+                .fileImporter(isPresented: $showFileBrowser, allowedContentTypes: .init(Playlist.defaultAllowedContentTypes)) { result in
                     switch result {
                     case .success(let openedUrl):
-                        currentMediaUrl = openedUrl
+                        currentPlaylist.add(fromUrl: openedUrl)
                         
                     case .failure(let failure):
-                        currentMediaUrl = nil
-                        print(failure)
+                        log(error: failure)
                     }
                 }
         }
