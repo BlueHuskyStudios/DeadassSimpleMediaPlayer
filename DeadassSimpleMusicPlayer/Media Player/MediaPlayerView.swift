@@ -9,7 +9,10 @@ import AVKit
 import Combine
 import MediaPlayer
 import SwiftUI
+
+#if canImport(UIKit)
 import UIKit
+#endif
 
 import SimpleLogging
 
@@ -22,7 +25,10 @@ struct MediaPlayerView: View {
     
     /// The URL pointing to the media currently being played
     @Binding
-    var currentMediaUrl: URL?
+    var currentPlaylist: Playlist
+    
+    @State
+    var currentPlaylistItemIndex: Int = 0
     
     
     // MARK: Private state
@@ -95,6 +101,15 @@ struct MediaPlayerView: View {
         .onDisappear {
             UIApplication.shared.endReceivingRemoteControlEvents()
         }
+    }
+}
+
+
+
+private extension MediaPlayerView {
+    @inline(__always)
+    var currentMediaUrl: URL? {
+        currentPlaylist.currentItem
     }
 }
 
@@ -357,6 +372,6 @@ private extension MediaPlayerView {
 
 #Preview {
     NavigationStack {
-        MediaPlayerView(currentMediaUrl: .constant(nil))
+        MediaPlayerView(currentPlaylist: .constant(.empty))
     }
 }
