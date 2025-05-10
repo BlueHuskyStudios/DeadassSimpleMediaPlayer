@@ -79,6 +79,14 @@ public final class AsyncMetadata: @unchecked Sendable, Observable { // Pro tip: 
 
 
 
+public extension AsyncMetadata {
+    convenience init(extractingMetadataFrom url: URL) async throws {
+        try await self.init(extractingMetadataFromAsset: .init(url: url))
+    }
+}
+
+
+
 // MARK: - Observation
 
 public extension AsyncMetadata {

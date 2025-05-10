@@ -25,7 +25,7 @@ public struct Playlist: Sendable {
     
     
     
-    public typealias Item = URL
+    public typealias Item = MediaItem
     public typealias Items = [Item]
 }
 
@@ -73,16 +73,21 @@ public extension Playlist {
     ///                           If `false`, this will only look at items directly in this folder, and not any deeper.
     ///                           If `true`, this will endlessly look deeper and deeper as long as there are more folders to expore. Be warned that this can cause a crash if there are recursive folders such as symlinks.
     ///                           Defaults to `false`.
-    mutating func add(fromUrl url: URL, allowedContentTypes: Set<UTType> = [.audiovisualContent, .directory], allowMovingToNewItem: Bool = true, allowRecursion: Bool = false) {
+    mutating func add(fromUrl url: URL, allowedContentTypes: Set<UTType> = [.audiovisualContent, .directory], allowMovingToNewItem: Bool = true, allowRecursion: Bool = false) 
+    async
+    {
         let fileManager = FileManager.default
         
         url.accessSecurityScopedResource { url in
+            
             let (exists: exists, isDirectory: isDirectory) = fileManager.fileExists(at: url)
             
             guard exists else {
                 log(warning: "I was asked to add media from a URL which doesn't point to any file: \(url)")
                 return
             }
+            
+            var itemsToAdd: [URL]
             
             if isDirectory {
                 guard allowedContentTypes.contains(where: { $0.conforms(to: .directory) }) else {
@@ -91,45 +96,46 @@ public extension Playlist {
                 }
                 
                 do {
-                    let fileUrls = try fileManager.contentsOfDirectory(at: url, includingPropertiesForKeys: [.isDirectoryKey])
-                    
-                    for fileUrl in fileUrls {
-                        add(fromUrl: fileUrl,
-                            allowedContentTypes: allowRecursion ? allowedContentTypes : allowedContentTypes.subtracting([.directory, .folder]),
-                            allowMovingToNewItem: allowMovingToNewItem,
-                            allowRecursion: allowRecursion)
-                    }
+                    itemsToAdd = try fileManager.contentsOfDirectory(at: url, contentTypes: allowedContentTypes, recursive: allowRecursion)
+                        .sorted(by: { left, right in
+                            let  leftMetadata = AsyncMetadata(extractingMetadataFrom: left)
+                            let rightMetadata = AsyncMetadata(extractingMetadataFrom: right)
+                        })
                 }
                 catch {
                     log(error: error)
+                    return
                 }
             }
             else {
                 guard allowedContentTypes.subtracting([.directory]).contains(where: url.conforms) else {
+                    log(info: "I was asked to add mediaa, but wasn't allowed to: \(url)")
                     return
                 }
                 
-                _addAssumingMediaFile(fromUrl: url, allowMovingToThisItem: allowMovingToNewItem)
+                itemsToAdd = [url]
+            }
+            
+            let newCurrentIndex: Items.Index? =
+                if !itemsToAdd.isEmpty,                      //     If we're adding new iems,
+                    allowMovingToNewItem,                    // and if this function allows us to move the current-item pointer to them upon adding them,
+                    let currentItemIndex,                    // and if there is a current index at all,
+                    !items.contains(index: currentItemIndex) // and if the current index doesn't point to any playlist item,,
+                {
+                    items.endIndex                           // then set the new index to the old just-past-the-end index
+                }
+                else {
+                    nil                                      // Otherwise, just leave the current index in the same position as before adding these items
+                }
+            
+            items.append(contentsOf: itemsToAdd)
+            
+            if let newCurrentIndex {
+                currentItemIndex = newCurrentIndex
             }
         }
         onFailure: {
-            log(error: "Couldn't get the necessary permissions to read from this URL: \(url)")
-        }
-    }
-    
-    
-    private mutating func _addAssumingMediaFile(fromUrl url: URL, allowMovingToThisItem: Bool) {
-        let moveToThisItem = if let currentItemIndex {
-                allowMovingToThisItem && !items.contains(index: currentItemIndex)
-            }
-            else {
-                allowMovingToThisItem
-            }
-        
-        items.append(url)
-        
-        if moveToThisItem {
-            currentItemIndex = items.index(before: items.endIndex)
+            log(error: "I couldn't get the necessary permissions to read from this URL: \(url)")
         }
     }
     

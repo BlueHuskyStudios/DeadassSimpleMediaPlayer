@@ -33,7 +33,7 @@ struct MediaPlayerView: View {
     
     // MARK: Private state
     
-    @available(iOS, deprecated: 17)
+    @available(iOS, deprecated)
     @State
     private var previousMediaUrl: URL?
     

@@ -35,6 +35,10 @@
 		B994DD8A2C38E1D1001C151D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B9B6F0DF2C15113C0093BAED /* Assets.xcassets */; };
 		B9A6923B2C443DD40032FB7B /* URL + UTType.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A6923A2C443DD40032FB7B /* URL + UTType.swift */; };
 		B9A6923C2C443DD40032FB7B /* URL + UTType.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A6923A2C443DD40032FB7B /* URL + UTType.swift */; };
+		B9A6923E2C44AA560032FB7B /* MediaItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A6923D2C44AA560032FB7B /* MediaItem.swift */; };
+		B9A6923F2C44AA560032FB7B /* MediaItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A6923D2C44AA560032FB7B /* MediaItem.swift */; };
+		B9A692432C44BB010032FB7B /* AsyncLazy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A692422C44BB010032FB7B /* AsyncLazy.swift */; };
+		B9A692442C44BB010032FB7B /* AsyncLazy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A692422C44BB010032FB7B /* AsyncLazy.swift */; };
 		B9B6F0DC2C1511390093BAED /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B6F0DB2C1511390093BAED /* App.swift */; };
 		B9B6F0DE2C1511390093BAED /* MediaPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B6F0DD2C1511390093BAED /* MediaPlayerView.swift */; };
 		B9B6F0E02C15113C0093BAED /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B9B6F0DF2C15113C0093BAED /* Assets.xcassets */; };
@@ -57,6 +61,8 @@
 		B994DD8E2C38E1D1001C151D /* Dead-Simple Media Player for iOS 16.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Dead-Simple Media Player for iOS 16.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B994DD8F2C38E1D2001C151D /* iOS 16-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "iOS 16-Info.plist"; path = "/Users/kyleggiero/KyDrive/Library/Projects/From Us/Apps/DeadassSimpleMusicPlayer/DeadassSimpleMusicPlayer/iOS 16-Info.plist"; sourceTree = "<absolute>"; };
 		B9A6923A2C443DD40032FB7B /* URL + UTType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "URL + UTType.swift"; sourceTree = "<group>"; };
+		B9A6923D2C44AA560032FB7B /* MediaItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaItem.swift; sourceTree = "<group>"; };
+		B9A692422C44BB010032FB7B /* AsyncLazy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncLazy.swift; sourceTree = "<group>"; };
 		B9B6F0D82C1511390093BAED /* Dead-Simple Media Player.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Dead-Simple Media Player.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B9B6F0DB2C1511390093BAED /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		B9B6F0DD2C1511390093BAED /* MediaPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaPlayerView.swift; sourceTree = "<group>"; };
@@ -115,8 +121,25 @@
 				B9B6F0DD2C1511390093BAED /* MediaPlayerView.swift */,
 				B989BF782C223748007D589E /* AVMediaPlayer.swift */,
 				B955C4582C43894900637C85 /* Playlist.swift */,
+				B9A6923D2C44AA560032FB7B /* MediaItem.swift */,
 			);
 			path = "Media Player";
+			sourceTree = "<group>";
+		};
+		B9A692402C44BADC0032FB7B /* Rougeware */ = {
+			isa = PBXGroup;
+			children = (
+				B9A692412C44BAE20032FB7B /* LazyContainers */,
+			);
+			path = Rougeware;
+			sourceTree = "<group>";
+		};
+		B9A692412C44BAE20032FB7B /* LazyContainers */ = {
+			isa = PBXGroup;
+			children = (
+				B9A692422C44BB010032FB7B /* AsyncLazy.swift */,
+			);
+			path = LazyContainers;
 			sourceTree = "<group>";
 		};
 		B9B6F0CF2C1511390093BAED = {
@@ -167,6 +190,7 @@
 		B9B940A72C3C4DB300E54F32 /* Extensions */ = {
 			isa = PBXGroup;
 			children = (
+				B9A692402C44BADC0032FB7B /* Rougeware */,
 				B955C46A2C442A6100637C85 /* Foundation */,
 				B9B940A82C3C4DBB00E54F32 /* SwiftUI */,
 			);
@@ -314,11 +338,13 @@
 				B994DD7F2C38E1D1001C151D /* AVKit + Sendable.swift in Sources */,
 				B994DD802C38E1D1001C151D /* AsyncMetadata.swift in Sources */,
 				B994DD812C38E1D1001C151D /* AVMediaPlayer.swift in Sources */,
+				B9A6923F2C44AA560032FB7B /* MediaItem.swift in Sources */,
 				B9A6923B2C443DD40032FB7B /* URL + UTType.swift in Sources */,
 				B955C46E2C442A7900637C85 /* URL security + sugar.swift in Sources */,
 				B994DD822C38E1D1001C151D /* App.swift in Sources */,
 				B994DD832C38E1D1001C151D /* ContentView.swift in Sources */,
 				B955C45A2C43894900637C85 /* Playlist.swift in Sources */,
+				B9A692432C44BB010032FB7B /* AsyncLazy.swift in Sources */,
 				B955C4712C442C6500637C85 /* FileManager + URL.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -332,11 +358,13 @@
 				B9C6C1782C336BFD009F6AC7 /* AVKit + Sendable.swift in Sources */,
 				B96595B92C18BD4E006348E6 /* AsyncMetadata.swift in Sources */,
 				B989BF792C223748007D589E /* AVMediaPlayer.swift in Sources */,
+				B9A6923E2C44AA560032FB7B /* MediaItem.swift in Sources */,
 				B9A6923C2C443DD40032FB7B /* URL + UTType.swift in Sources */,
 				B955C46D2C442A7900637C85 /* URL security + sugar.swift in Sources */,
 				B9B6F0DC2C1511390093BAED /* App.swift in Sources */,
 				B9B6F0EE2C151DA00093BAED /* ContentView.swift in Sources */,
 				B955C4592C43894900637C85 /* Playlist.swift in Sources */,
+				B9A692442C44BB010032FB7B /* AsyncLazy.swift in Sources */,
 				B955C4702C442C6500637C85 /* FileManager + URL.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

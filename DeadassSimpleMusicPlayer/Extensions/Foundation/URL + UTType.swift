@@ -11,11 +11,11 @@ import UniformTypeIdentifiers
 
 
 public extension URL {
-    var typeIdentifier: UTType {
+    var contentType: UTType {
         UTType(filenameExtension: self.pathExtension) ?? .data
     }
     
     func conforms(to utType: UTType) -> Bool {
-        typeIdentifier.conforms(to: utType)
+        contentType.conforms(to: utType)
     }
 }
