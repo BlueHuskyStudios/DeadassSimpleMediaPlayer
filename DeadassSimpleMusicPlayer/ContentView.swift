@@ -38,7 +38,12 @@ struct ContentView: View {
                 .fileImporter(isPresented: $showFileBrowser, allowedContentTypes: .init(Playlist.defaultAllowedContentTypes)) { result in
                     switch result {
                     case .success(let openedUrl):
-                        Task { await currentPlaylist.add(fromUrl: openedUrl) }
+                        Task {
+                            guard let openedItem = await Playlist.Item(url: openedUrl) else {
+                                return
+                            }
+                            currentPlaylist.append(openedItem)
+                        }
                         
                     case .failure(let failure):
                         log(error: failure)

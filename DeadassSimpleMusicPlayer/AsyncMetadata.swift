@@ -17,81 +17,58 @@ import SpecialString
 
 
 
-public typealias Metadata = Sendable & Equatable
-
-
-
-/// An easy-to-use abstraction of fetching metadata from an `AVAsset`
+/// An easy-to-use abstraction of fetching metadata from an `AVAsset`.
+///
+/// Each metadata key has its own lazy search, owned by a `ThrowingAsyncBinding`
+/// stored in the per-key cache. The binding handles the loading-state machine,
+/// caches both successful and failed outcomes, and fires a change callback at
+/// every state transition; this class is responsible only for installing
+/// those bindings on first request and for republishing their terminal
+/// transitions as a single `Void` change ping on
+/// ``onMetadataDidUpdate()``.
 #if swift(>=6)
 @Observable
-public final class AsyncMetadata: @unchecked Sendable { // Pro tip: periodically remove `Sendable` conformance to make sure things are okay. This is only `@unchecked` for `__cache` and `Sendable` for `get(_:)`. We also make Our own checks for race conditions in `__findMetadata(_:)`
-    
-    /// Aids in determining if a `AsyncMetadata` is unique amongst others
-    private let id = UUID()
-    
-    /// The metadata retrieved from the asset when this was created
-    private let assetMetadata: [AVMetadataItem]
-    
-    /// The metadata that this extracted & parsed from the asset
-    private var __cache: [AsyncMetadataKeyId: CachedSearch] = [:] {
-        didSet {
-            Task {
-                await MainActor.run {
-                    metadataUpdatePublisher.send(Void())
-                }
-            }
-        }
-    }
-    
-    /// Alerts subscribers when this updates
-    private var metadataUpdatePublisher = PassthroughSubject<Void, Never>()
-    
-    
-    init(extractingMetadataFromAsset asset: AVAsset) async throws {
-        self.assetMetadata = try await asset.load(.metadata)
-    }
-    
-    
-    
-    /// One lazy search per metadata key, value-erased so heterogeneous keys
-    /// can share storage. Re-cast to the key's `Value` at the public API
-    /// boundary, matching the erasure pattern already used in this file.
-    private typealias CachedSearch = AsyncLazy<(any Sendable)?>
-}
-#else
-public final class AsyncMetadata: @unchecked Sendable, Observable { // Pro tip: periodically remove `Sendable` conformance to make sure things are okay. This is only `@unchecked` for `__cache` and `Sendable` for `get(_:)`. We also make Our own checks for race conditions in `__findMetadata(_:)`
-    
-    /// Aids in determining if a `AsyncMetadata` is unique amongst others
-    private let id = UUID()
-    
-    /// The metadata retrieved from the asset when this was created
-    private let assetMetadata: [AVMetadataItem]
-    
-    /// The metadata that this extracted & parsed from the asset
-    @Published
-    private var __cache: [AsyncMetadataKeyId : MetadataSearchResult<any Sendable>] = [:] {
-        didSet {
-            Task {
-                await MainActor.run {
-                    metadataUpdatePublisher.send(Void())
-                }
-            }
-        }
-    }
-    
-    /// Alerts subscribers when this updates
-    private var metadataUpdatePublisher = PassthroughSubject<Void, Never>()
-    
-    
-    init(extractingMetadataFromAsset asset: AVAsset) async throws {
-        self.assetMetadata = try await asset.load(.metadata)
-    }
-}
 #endif
+public final class AsyncMetadata: @unchecked Sendable {
+    // `@unchecked` covers the cache-dictionary insert in `lazySearch(for:)`,
+    // which is racy in the same benign way as the previous implementation:
+    // two concurrent first-lookups for the same key may each construct a
+    // binding, with the loser orphaned but producing no incorrect result.
+    // Fixing this would require a mutex around the insert; see the closing
+    // comment in `lazySearch(for:)`.
+
+    /// Aids in determining if an `AsyncMetadata` is unique amongst others.
+    private let id = UUID()
+
+    /// The metadata retrieved from the asset at creation time. Immutable for
+    /// the lifetime of this instance; per-value extraction is deferred.
+    private let assetMetadata: [AVMetadataItem]
+
+    /// Per-key lazy searches. Each entry encapsulates its own loading state
+    /// (`.notStarted` / `.loading` / `.success` / `.failure`) and caches the
+    /// outcome forever after first resolution.
+    private var __cache: [AsyncMetadataKeyId: CachedSearch] = [:]
+
+    /// Republishes a `Void` whenever any cached search transitions into a
+    /// terminal state. Backs the public ``onMetadataDidUpdate()`` contract.
+    private let metadataUpdatePublisher = PassthroughSubject<Void, Never>()
+
+
+    /// Creates an `AsyncMetadata` by loading the top-level metadata array
+    /// from `asset`.
+    ///
+    /// Only the asset's `.metadata` property is loaded eagerly; per-value
+    /// extraction is deferred until the relevant key is requested.
+    init(extractingMetadataFromAsset asset: AVAsset) async throws {
+        self.assetMetadata = try await asset.load(.metadata)
+    }
+}
 
 
 
 public extension AsyncMetadata {
+    /// Convenience initializer that wraps `url` in an `AVURLAsset` and
+    /// extracts metadata from it.
     convenience init(extractingMetadataFrom url: URL) async throws {
         try await self.init(extractingMetadataFromAsset: AVURLAsset(url: url))
     }
@@ -102,9 +79,14 @@ public extension AsyncMetadata {
 // MARK: - Observation
 
 public extension AsyncMetadata {
-    /// Every time this instance of `AsyncMetadata` starts or concludes a search, this publisher sends a new value.
+    /// Every time this instance starts or concludes a search, this publisher
+    /// sends a new `Void`. Use the ``get`` methods to retrieve actual values
+    /// once a ping arrives.
     ///
-    /// The values this publisher sends are only `Void`s; you're expected to then use the ``get`` methods to retrieve any cached value you're interested in
+    /// The publisher does **not** hop to any particular executor; if a
+    /// subscriber needs main-actor delivery (typical for SwiftUI bindings),
+    /// apply `.receive(on: DispatchQueue.main)` or equivalent at the
+    /// subscription site.
     func onMetadataDidUpdate() -> AnyPublisher<Void, Never> {
         metadataUpdatePublisher.eraseToAnyPublisher()
     }
@@ -116,17 +98,22 @@ public extension AsyncMetadata {
 
 /// Relates to a metadata value, allowing you to look up a value by its key.
 ///
-/// This also allows one key to map to many different metadata values in order of preference (e.g. common track title vs iTunes song name vs QuickTime user-specified track name vs etc...)
+/// This also allows one key to map to many different metadata values in
+/// order of preference (e.g. common track title vs iTunes song name vs
+/// QuickTime user-specified track name vs ...).
 public struct AsyncMetadataKey<Value: Sendable>: Identifiable, Sendable {
-    
-    /// Uniquely identifies this key amongst all other `AsyncMetadataKey`s
+
+    /// Uniquely identifies this key amongst all other `AsyncMetadataKey`s.
     public let id: Id
-    
-    /// The AVKit metadata identifiers which correspond to this key, sorted with the most-preferred first.
+
+    /// The AVKit metadata identifiers which correspond to this key, sorted
+    /// with the most-preferred first.
     ///
-    /// This allows one key to map to many different metadata values in order of preference (e.g. common track title vs iTunes song name vs QuickTime user-specified track name vs etc...)
+    /// This allows one key to map to many different metadata values in
+    /// order of preference (e.g. common track title vs iTunes song name vs
+    /// QuickTime user-specified track name vs ...).
     public let identifiers: [AVMetadataIdentifier]
-    
+
     public let retrievalApproach: AsyncMetadata.RetrievalApproach<Value> = .justLoadValue
 }
 
@@ -148,17 +135,21 @@ public extension AsyncMetadata {
 }
 
 
+
 public extension AsyncMetadata {
-    
-    /// How to retrieve the metadata from the system
+
+    /// How to retrieve the metadata from the system.
     enum RetrievalApproach<Value: Sendable>: Sendable {
-        
-        /// Just directly loads the value with ``AVMetadataItem.load(_:)`` ``AVPartialAsyncProperty.value`` and attempts to cast it to `Value`
+
+        /// Just directly loads the value with `AVMetadataItem.load(_:)`
+        /// `AVPartialAsyncProperty.value` and attempts to cast it to `Value`.
         case justLoadValue
-        
-        /// Loads the value with ``AVMetadataItem.load(_:)`` ``AVPartialAsyncProperty.dataValue``, and then sends that `Data` to the given function
+
+        /// Loads the value with `AVMetadataItem.load(_:)`
+        /// `AVPartialAsyncProperty.dataValue`, and then sends that `Data` to
+        /// the given function.
         case loadDataValue(initializer: @Sendable (Data) -> Value)
-        
+
 //        case loadSomethingElse(AVPartialAsyncProperty)
     }
 }
@@ -167,8 +158,7 @@ public extension AsyncMetadata {
 // MARK: Default keys
 
 public extension AsyncMetadataKey where Value == String {
-    
-    /// The media's title (or name)
+    /// The media's title (or name).
     static let title = Self(id: "title", identifiers: [
         .quickTimeUserDataTrackName,
         .identifier3GPUserDataTitle,
@@ -178,11 +168,11 @@ public extension AsyncMetadataKey where Value == String {
         .quickTimeMetadataTitle,
         .icyMetadataStreamTitle,
     ])
-    
-    /// The media's creator (or author, or artist, or band, or composer, or...)
+
+    /// The media's creator (or author, or artist, or band, or composer, or ...).
     static let creator = Self(id: "creator", identifiers: [
         .identifier3GPUserDataAuthor,
-        
+
         .commonIdentifierArtist,
         .commonIdentifierAuthor,
         .iTunesMetadataArtist,
@@ -191,11 +181,11 @@ public extension AsyncMetadataKey where Value == String {
         .iTunesMetadataAlbumArtist,
         .quickTimeMetadataArtist,
         .quickTimeMetadataAuthor,
-        
+
         .identifier3GPUserDataPerformer,
         .id3MetadataLyricist,
         .iTunesMetadataSoloist,
-        
+
         .quickTimeMetadataArranger,
         .quickTimeUserDataComposer,
         .quickTimeMetadataComposer,
@@ -204,7 +194,7 @@ public extension AsyncMetadataKey where Value == String {
         .iTunesMetadataArranger,
         .id3MetadataConductor,
         .iTunesMetadataDirector,
-        
+
         .id3MetadataOriginalArtist,
         .id3MetadataPublisher,
     ])
@@ -213,8 +203,8 @@ public extension AsyncMetadataKey where Value == String {
 
 
 public extension AsyncMetadataKey where Value == NativeImage? {
-    
-    /// The media's title (or name)
+
+    /// The media's cover art (or thumbnail, or attached picture).
     static let image = Self(id: "image", identifiers: [
         .identifier3GPUserDataThumbnail,
         .iTunesMetadataCoverArt,
@@ -227,50 +217,52 @@ public extension AsyncMetadataKey where Value == NativeImage? {
 // MARK: - 🌎 API / Retrieving values
 
 public extension AsyncMetadata {
-    
-    /// Returns the already-found value at the given key, or starts the search and returns `.stillSearching`.
+
+    /// Returns the already-found value at the given key, or starts the
+    /// search and returns ``MetadataSearchResult/stillSearching``.
     ///
-    /// If no value is cached, then this will spawn off a new `Task` to find the value.
-    /// Once that's found (or the search reveals it doesn't exist), that search result will be stored in cache, and further calls to this function will return that search result.
-    /// In the meantime, while that search is going on, this will return `.sillSearching`.
-    /// When any search completes, the publisher returned by ``onMetadataDidUpdate()`` will be sent a new ping, indicating that you can call this function again to get the result of the search.
+    /// Spawning of the search task is delegated to the underlying
+    /// `ThrowingAsyncBinding`: reading its `loadingState` is what triggers
+    /// loading. The ``onMetadataDidUpdate()`` publisher will ping when the
+    /// search reaches a terminal state.
     ///
-    /// If you just want to call a function and get back your value, see the version of ``get(_:)-6i1hp`` which is `async`.
+    /// If the search has previously failed, this returns
+    /// ``MetadataSearchResult/notFound`` (the error is logged once when it
+    /// first occurs). To surface the underlying error to the caller, use the
+    /// `async throws` overload instead.
     ///
-    /// - Parameter key: Identifies exactly what metadata you want to retrieve, including its Type
-    /// - Returns:       The current state/result of searching for that metadata.
-    func get<Value: Sendable>(_ key: Key<Value>) -> LoadingState<Value> {
-        let search = __cache[key.id] ?? installSearch(for: key)
-        return search.loadingState
+    /// - Parameter key: Identifies exactly what metadata to retrieve,
+    ///                  including its `Value` type.
+    /// - Returns: The current state/result of searching for that metadata.
+    func get<Value: Sendable>(_ key: Key<Value>) -> MetadataSearchResult<Value> {
+        let search = lazySearch(for: key)
+        return MetadataSearchResult(loadingState: search.loadingState)
     }
-    
-    /// Returns the already-found value at the given key, or searches for it.
-    /// 
-    /// If this is the first time this function has been called for this key, it starts a new search, and returns the result to you..
+
+
+    /// Returns the already-found value at the given key, or awaits the
+    /// search.
     ///
-    /// If this is not the first time this function has been called for this key:
-    /// - If a search is currently ongoing, this returns `.stillSearching`
-    /// - If a search has concluded, then this returns the result of that previous search: `.found` or `.notFound`
+    /// If this is the first time this function has been called for this key,
+    /// it starts a new search and awaits its completion. Subsequent calls
+    /// return (or re-throw) the cached outcome immediately.
     ///
-    /// If you just want to call a synchronous function to get the cached search result or know whether a search is ongoing, see the version of ``get(_:)-2omal`` which is not `async`.
+    /// > Important: Errors are cached. Once a search for a given key throws,
+    /// > every subsequent call for that key will re-throw the same error
+    /// > rather than retrying. This is a deliberate change from the previous
+    /// > implementation, which silently swallowed errors and retried
+    /// > forever; the assumption is that AVFoundation extraction failures
+    /// > are properties of the asset, not transient conditions.
     ///
-    /// - Parameter key: Identifies exactly what metadata you want to retrieve, including its Type
-    /// - Returns:       The value associated with the given key, or `nil` if that value is not (yet) found
+    /// - Parameter key: Identifies exactly what metadata to retrieve,
+    ///                  including its `Value` type.
+    /// - Returns: The value associated with the given key, or `nil` if no
+    ///            such value was found in the asset.
+    /// - Throws: Any error encountered during the search.
     func get<Value: Sendable>(_ key: Key<Value>) async throws -> Value? {
-        let searchResult: MetadataSearchResult<any Sendable>?
-        
-        if let cached = __cache[key.id] {
-            searchResult = cached
-        }
-        else {
-            searchResult = try await self.findAndCacheMetadata(key).erasedToAnyValue()
-        }
-        
-        switch searchResult {
-        case .stillSearching:          return nil
-        case .found(value: let value): return (value as! Value)
-        case .notFound, .none:         return nil
-        }
+        let search = lazySearch(for: key)
+        let erased = try await search.wrappedValue
+        return erased as? Value
     }
 }
 
@@ -279,154 +271,226 @@ public extension AsyncMetadata {
 // MARK: - Caching & Searching
 
 private extension AsyncMetadata {
+
+    /// Returns the existing lazy search for `key`, installing a new one if
+    /// none exists.
+    ///
+    /// On installation, an `onDidChange` callback is attached that
+    /// republishes the search's terminal transitions through
+    /// ``metadataUpdatePublisher`` and logs any failure exactly once at the
+    /// moment of transition (rather than repeatedly on every subsequent
+    /// `get`).
+    ///
+    /// The dictionary insert at the end of this method is not protected by a
+    /// mutex; under a true race between two callers for the same key, both
+    /// will construct a binding and one will overwrite the other. The
+    /// orphaned binding is benign — it produces no incorrect result, just a
+    /// wasted background `Task`. If that ever becomes unacceptable, wrap the
+    /// read-or-install in a `Mutex.run { ... }` block using the same `Mutex`
+    /// type the `ThrowingAsyncBinding` implementation already relies on.
+    func lazySearch<Value: Sendable>(for key: Key<Value>) -> CachedSearch {
+        if let existing = __cache[key.id] {
+            return existing
+        }
+
+        let search = CachedSearch(
+            { [weak self] in
+                guard let self else {
+                    // The owning AsyncMetadata has been deallocated;
+                    // there's nothing meaningful to return. The binding
+                    // caches this failure forever, which is fine — anything
+                    // observing it has nothing to observe with.
+                    throw CancellationError()
+                }
+                return try await Self.performSearch(
+                    in: self.assetMetadata,
+                    matching: key
+                )
+            },
+            set: { [weak self] newState in
+                switch newState {
+                case .failure(let error):
+                    log(error: error)
+                    self?.metadataUpdatePublisher.send(())
+
+                case .success:
+                    self?.metadataUpdatePublisher.send(())
+
+                case .notStarted, .loading:
+                    break
+                }
+            }
+        )
+
+        __cache[key.id] = search
+        return search
+    }
+
+
+    /// Performs the actual AVFoundation lookup for a given key.
+    ///
+    /// Pure (no `self`) so the closure stored in the binding can capture
+    /// only what it actually needs — `assetMetadata` and `key` — rather than
+    /// taking ownership of the enclosing `AsyncMetadata` instance.
+    ///
+    /// Returns the typed value erased to `any Sendable`, or `nil` if either
+    /// no matching metadata item exists in the asset or its loaded value
+    /// could not be cast to `Value`. A cast failure is logged as a warning
+    /// because it likely indicates a key/identifier mismatch rather than a
+    /// legitimate "not found".
+    static func performSearch<Value: Sendable>(
+        in assetMetadata: [AVMetadataItem],
+        matching key: Key<Value>
+    ) async throws -> (any Sendable)? {
+        guard let desiredMetadata = assetMetadata.first(where: { item in
+            guard let identifier = item.identifier else { return false }
+            return key.identifiers.contains(identifier)
+        })
+        else {
+            return nil
+        }
+
+        guard let rawValue = try await desiredMetadata.load(.value) else {
+            return nil
+        }
+
+        guard let typedValue = rawValue as? Value else {
+            log(warning: "Raw value found, but was of type \(type(of: rawValue)), which couldn't be converted to \(Value.self)")
+            return nil
+        }
+
+        return typedValue as any Sendable
+    }
     
-    /// Finds the metadata associated with the given key, then caches it in the ``__cache``.
+    
+    /// Type-erased per-key search.
     ///
-    /// If a search is ongoing, this immediately returns ``MetadataSearchResult.stillSearching``.
-    /// If a search has concluded then this saves that result in the cache and returns it.
+    /// `Value` is erased to `(any Sendable)?` — `nil` represents
+    /// "concluded, not found" — and re-cast to the key's concrete type at
+    /// the public API boundary. This matches the value-erasure pattern the
+    /// previous implementation used for `__cache`.
     ///
-    /// - Parameter key: Identifies exactly what metadata you want to retrieve, including its Type
-    func findAndCacheMetadata<Value: Metadata>(_ key: Key<Value>)
-    async throws -> LoadingState<Value?> {
-        let result = try await __findMetadata(key)
-        switch result {
+    /// `Failure` is left as `any Error` because the underlying source of
+    /// errors (`AVMetadataItem.load(.value)`) doesn't promise a more specific
+    /// error type, and `any Error` satisfies the binding's
+    /// `Failure: Sendable` constraint via `Error`'s inherited `Sendable`
+    /// conformance.
+    typealias CachedSearch = ThrowingAsyncBinding<(any Sendable)?, any Error>
+}
+
+
+
+// MARK: - Bridge from loading state to public result enum
+
+internal extension MetadataSearchResult {
+
+    /// Bridges a `ThrowingAsyncBinding`'s loading state into the public
+    /// result enum.
+    ///
+    /// Errors collapse to ``MetadataSearchResult/notFound`` on the
+    /// synchronous path; the async `get(_:)` overload surfaces them as
+    /// throws instead. A cast failure from the erased `(any Sendable)?`
+    /// payload to `Value` also collapses to `.notFound` — this can only
+    /// happen if a key is registered for an identifier whose loaded value
+    /// type doesn't match `Value`, which is a programmer error rather than
+    /// a runtime condition the caller can act on.
+    init(loadingState: FailableLoadingState<(any Sendable)?, any Error>) {
+        switch loadingState {
         case .notStarted, .loading:
-            return result
-            
-        case .success(_:):
-            __cache[key.id] = result.erasedToAnyValue()
-            return result
-        }
-    }
-    
-    
-    /// Finds the metadata associated with the given key, then caches it in the ``__cache``
-    ///
-    /// If a search is ongoing, this immediately returns ``MetadataSearchResult.stillSearching``.
-    /// **If a search has concluded then this performs the search again.**
-    ///
-    /// Searching is perfomed on a ``Task`` with `.background` priority
-    ///
-    /// - Parameter key: Identifies exactly what metadata you want to retrieve, including its Type
-    private func __findMetadata<Value: Sendable>(_ key: Key<Value>)
-    async throws -> MetadataSearchResult<Value> {
-        guard .stillSearching != __cache[key.id] else { return .stillSearching }
-        
-        return try await Task(priority: .background) {
-            guard let desiredMetadata = assetMetadata.first(where: { item in
-                guard let identifier = item.identifier else { return false }
-                return key.identifiers.contains(identifier)
-            })
+            self = .stillSearching
+
+        case .success(nil):
+            self = .notFound
+
+        case .success(.some(let erased)):
+            if let typed = erased as? Value {
+                self = .found(value: typed)
+            }
             else {
-                return .notFound
+                self = .notFound
             }
-            
-            guard let rawValue = try await desiredMetadata.load(.value) else {
-                return .notFound
-            }
-            
-            guard let value = rawValue as? Value else {
-                log(warning: "Raw value found, but was of type \(type(of: rawValue)), which couldn't be converted to \(Value.self)")
-                return .notFound
-            }
-            
-            return .found(value: value)
+
+        case .failure:
+            // The error was already logged when it first occurred (in the
+            // binding's `onDidChange` callback). Don't re-log on every read.
+            self = .notFound
         }
-        .value
     }
 }
 
 
 
-///// The result of searching for metadata
-//public enum MetadataSearchResult<Value: Sendable>: Sendable {
-//    
-//    /// Some search is still ongoing. Check back later for the result
-//    case stillSearching
-//    
-//    /// A search has concluded; here is the value it found
-//    /// - Parameter value: The value the search discovered
-//    case found(value: Value)
-//    
-//    /// A search has concluded; no value was found
-//    case notFound
-//}
+// MARK: - Search result
 
+/// The result of searching for metadata.
+public enum MetadataSearchResult<Value: Sendable>: Sendable {
 
+    /// Some search is still ongoing. Check back later for the result.
+    case stillSearching
 
-@available(*, deprecated, renamed: "LoadingState")
-public typealias MetadataSearchResult<Value: Sendable & Equatable> = LoadingState<Optional<Value>>
+    /// A search has concluded; here is the value it found.
+    /// - Parameter value: The value the search discovered.
+    case found(value: Value)
 
-
-
-extension MetadataSearchResult {
-    
-    @available(*, unavailable, renamed: "loading")
-    static var stillSearching: Self {
-        .loading
-    }
-    
-    @available(*, unavailable, renamed: "success(_:)", message: "Use .success(nil) instead")
-    static var notFound: Self {
-        .success(nil)
-    }
-    
-    @available(*, unavailable, renamed: "success(_:)", message:  "Use .success(value) instead")
-    static func found(value: Value) -> Self {
-        .success(value)
-    }
+    /// A search has concluded; no value was found.
+    case notFound
 }
 
 
 
-//public extension MetadataSearchResult {
-//    var value: Value? {
-//        switch self {
-//        case .loading,
-//                .success(nil):
-//            nil
-//            
-//        case .found(let value):
-//            value
-//        }
-//    }
-//}
-
-
-
-private extension LoadingState<Metadata?> {
-    /// Returns a version of this search result where the value remains the same but is re-cast  as any type
-    func erasedToAnyValue() -> LoadingState<(any Metadata)?> {
+public extension MetadataSearchResult {
+    var value: Value? {
         switch self {
-        case .notStarted:         .notStarted
-            
-        case .loading:            .loading
-            
-        case .success(let value): .success(value)
+        case .stillSearching,
+             .notFound:
+            nil
+
+        case .found(let value):
+            value
         }
     }
-    
-    
+}
+
+
+
+internal extension MetadataSearchResult {
+    /// Returns a version of this search result where the value remains the
+    /// same but is re-cast as `any Sendable`.
+    func erasedToAnyValue() -> MetadataSearchResult<any Sendable> {
+        switch self {
+        case .stillSearching:
+                .stillSearching
+
+        case .found(let value):
+                .found(value: value)
+
+        case .notFound:
+                .notFound
+        }
+    }
+
+
     /// Attempts to cast this result's contained value to the given type.
     ///
-    /// If not (yet) found, this always succeeds and returns that state untouched.
-    /// If found, this only succeeds if the contaiend value can be safely cast to the given new game; otherwise this returns `nil` instead of a search result.
-    ///
-    /// - Parameter valueType: _optional_ - The type to cast to. This is implied if possible
-    /// - Returns: This search result, with the value cast to a different type if possible
-    func castValue<NewValue>(to valueType: NewValue.Type = NewValue.self) -> LoadingState<NewValue?>? {
+    /// If not (yet) found, this always succeeds and returns
+    /// `.stillSearching` or `.notFound`. If found, this only succeeds if
+    /// the contained value can be safely cast to the given type; otherwise
+    /// this returns `nil` instead of a search result.
+    func castValue<NewValue>(to valueType: NewValue.Type = NewValue.self) -> MetadataSearchResult<NewValue>? {
         switch self {
-        case .notStarted:   return .notStarted
-        case .loading:      return .loading
-        case .success(nil): return .success(nil)
-            
-        case .success(let value):
+        case .stillSearching:
+            return .stillSearching
+
+        case .found(value: let value):
             if let newValue = value as? NewValue {
-                return .success(newValue)
+                return .found(value: newValue)
             }
             else {
                 return nil
             }
+
+        case .notFound:
+            return .notFound
         }
     }
 }
@@ -438,13 +502,21 @@ private extension LoadingState<Metadata?> {
 // MARK: Equatable
 
 extension AsyncMetadata: Equatable {
-    /// Two instances of `AsyncMetadata` are considered equal iff their IDs and caches are both equal
+    /// Two instances of `AsyncMetadata` are considered equal iff their IDs
+    /// are equal — which, since `id` is a freshly-generated UUID per
+    /// instance, reduces to identity equality.
+    ///
+    /// The previous implementation also compared `__cache` for value
+    /// equality, but the cache now stores `ThrowingAsyncBinding` values
+    /// which are not `Equatable`. In practice this stricter comparison was
+    /// only ever true when both instances were the same instance anyway, so
+    /// the looser definition matches every case the strict one used to
+    /// satisfy.
     public static func == (lhs: AsyncMetadata, rhs: AsyncMetadata) -> Bool {
         lhs.id == rhs.id
-        && lhs.__cache == rhs.__cache
     }
-    
-    
+
+
     public static func ~= (lhs: AsyncMetadata, rhs: AsyncMetadata) -> Bool {
         lhs.id == rhs.id
     }
@@ -469,64 +541,54 @@ extension AsyncMetadataKey: Hashable {
 
 
 extension MetadataSearchResult: Equatable {
-    
-    /// Two instances of `MetadataSearchResult` where their `Value`s are _not_ `Equatable`, are considered equal if they're both in the same general state.
+
+    /// Two instances of `MetadataSearchResult` where their `Value`s are
+    /// _not_ `Equatable`, are considered equal if they're both in the same
+    /// general state.
     ///
-    /// That is to say, if both are `.stillSearching`, if both are `.notFound`, or if both are `.found` regardless of value
+    /// That is to say, if both are `.stillSearching`, if both are
+    /// `.notFound`, or if both are `.found` regardless of value.
     public static func == (lhs: Self, rhs: Self) -> Bool {
         switch (lhs, rhs) {
         case (.stillSearching, .stillSearching),
-            (.found, .found),
-            (.notFound, .notFound):
+             (.found, .found),
+             (.notFound, .notFound):
             return true
-            
+
         case (.stillSearching, _),
-            (.found, _),
-            (.notFound, _):
+             (.found, _),
+             (.notFound, _):
             return false
         }
     }
-    
-    
-    /// Two instances of `MetadataSearchResult` where their `Value`s are `Equatable`, are considered equal if they're both in the same general state and, if that state contains a value, those values are also equal.
+
+
+    /// Two instances of `MetadataSearchResult` where their `Value`s are
+    /// `Equatable`, are considered equal if they're both in the same
+    /// general state and, if that state contains a value, those values are
+    /// also equal.
     ///
-    /// That is to say, if both are `.stillSearching`, if both are `.notFound`, or if both are `.found` where the found values are also equal
+    /// That is to say, if both are `.stillSearching`, if both are
+    /// `.notFound`, or if both are `.found` where the found values are
+    /// also equal.
     public static func == (lhs: Self, rhs: Self) -> Bool
     where Value: Equatable
     {
         switch (lhs, rhs) {
         case (.found(value: let lhsValue), .found(value: let rhsValue)):
             return lhsValue == rhsValue
-            
+
         case (.stillSearching, .stillSearching),
-            (.notFound, .notFound):
+             (.notFound, .notFound):
             return true
-            
+
         case (.stillSearching, _),
-            (.found, _),
-            (.notFound, _):
+             (.found, _),
+             (.notFound, _):
             return false
         }
     }
 }
-
-
-
-//// MARK: Dynamic member lookup
-//
-//public extension AsyncMetadata {
-//    subscript<Value>(dynamicMember keyPath: KeyPath<AsyncMetadataKey<Value>.Type, AsyncMetadataKey<Value>>) -> MetadataSearchResult<Value> {
-//        let key = AsyncMetadataKey.self[keyPath: keyPath]
-//        guard let cache = __cache[key.id] else {
-//            Task { [weak self] in
-//                guard let self else { return }
-//                _ = try await self.findAndCacheMetadata(key, backup: nil)
-//            }
-//            
-//            return .stillSearching
-//        }
-//    }
-//}
 
 
 
