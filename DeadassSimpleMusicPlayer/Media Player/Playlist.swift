@@ -5,6 +5,7 @@
 //  Created by Ky on 2024-07-13.
 //
 
+import AsyncAlgorithms
 import Foundation
 
 import BasicMathTools
@@ -73,12 +74,12 @@ public extension Playlist {
     ///                           If `false`, this will only look at items directly in this folder, and not any deeper.
     ///                           If `true`, this will endlessly look deeper and deeper as long as there are more folders to expore. Be warned that this can cause a crash if there are recursive folders such as symlinks.
     ///                           Defaults to `false`.
-    mutating func add(fromUrl url: URL, allowedContentTypes: Set<UTType> = [.audiovisualContent, .directory], allowMovingToNewItem: Bool = true, allowRecursion: Bool = false) 
+    mutating func _add(fromUrl url: URL, allowedContentTypes: Set<UTType> = [.audiovisualContent, .directory], allowMovingToNewItem: Bool = true, allowRecursion: Bool = false)
     async
     {
         let fileManager = FileManager.default
         
-        url.accessSecurityScopedResource { url in
+        await url.accessSecurityScopedResource { (url) -> Void in
             
             let (exists: exists, isDirectory: isDirectory) = fileManager.fileExists(at: url)
             
@@ -87,7 +88,7 @@ public extension Playlist {
                 return
             }
             
-            var itemsToAdd: [URL]
+            let itemsToAdd: Items
             
             if isDirectory {
                 guard allowedContentTypes.contains(where: { $0.conforms(to: .directory) }) else {
@@ -96,11 +97,18 @@ public extension Playlist {
                 }
                 
                 do {
-                    itemsToAdd = try fileManager.contentsOfDirectory(at: url, contentTypes: allowedContentTypes, recursive: allowRecursion)
-                        .sorted(by: { left, right in
-                            let  leftMetadata = AsyncMetadata(extractingMetadataFrom: left)
-                            let rightMetadata = AsyncMetadata(extractingMetadataFrom: right)
-                        })
+                    itemsToAdd = try await fileManager
+                        .contentsOfDirectory(at: url, contentTypes: allowedContentTypes, recursive: allowRecursion)
+                        .async
+                        .compactMap { url in
+                            await Item(url: url)
+                        }
+//                        .sorted(by: { left, right in
+//                            let  leftMetadata = left.metadata
+//                            let rightMetadata = right.metadata
+//                            leftMetadata?.get(.)
+//                        })
+                        .collect()
                 }
                 catch {
                     log(error: error)
@@ -108,12 +116,16 @@ public extension Playlist {
                 }
             }
             else {
-                guard allowedContentTypes.subtracting([.directory]).contains(where: url.conforms) else {
+                guard allowedContentTypes
+                    .subtracting([.directory])
+                    .contains(where: url.conforms),
+                      let item = await Item(url: url)
+                else {
                     log(info: "I was asked to add mediaa, but wasn't allowed to: \(url)")
                     return
                 }
                 
-                itemsToAdd = [url]
+                itemsToAdd = [item]
             }
             
             let newCurrentIndex: Items.Index? =
@@ -137,6 +149,46 @@ public extension Playlist {
         onFailure: {
             log(error: "I couldn't get the necessary permissions to read from this URL: \(url)")
         }
+    }
+    
+    
+    /// Appends pre-resolved items to this playlist and, optionally, advances
+    /// the current-item pointer onto the first newly-appended item when the
+    /// previous pointer was dangling.
+    ///
+    /// Synchronous on purpose: with no suspension point, this mutation is
+    /// safe to invoke on `@State`-backed storage from any actor-isolated
+    /// context. Pair with ``items(fromUrl:allowedContentTypes:allowRecursion:)``
+    /// when the items originate from disk.
+    mutating func append(
+        contentsOf newItems: Items,
+        allowMovingToNewItem: Bool = true
+    ) {
+        guard !newItems.isEmpty else { return }
+        
+        let shouldMovePointer =
+        allowMovingToNewItem
+        && currentItemIndex.map { !items.contains(index: $0) } ?? false
+        
+        if shouldMovePointer {
+            currentItemIndex = items.endIndex
+        }
+        items.append(contentsOf: newItems)
+    }
+    
+    
+    mutating func append(
+        _ newItem: Element,
+        allowMovingToNewItem: Bool = true
+    ) {
+        let shouldMovePointer =
+        allowMovingToNewItem
+        && currentItemIndex.map { !items.contains(index: $0) } ?? false
+        
+        if shouldMovePointer {
+            currentItemIndex = items.endIndex
+        }
+        items.append(newItem)
     }
     
     

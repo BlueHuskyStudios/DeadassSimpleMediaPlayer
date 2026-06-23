@@ -35,7 +35,7 @@ struct MediaPlayerView: View {
     
     @available(iOS, deprecated)
     @State
-    private var previousMediaUrl: URL?
+    private var previousMediaItem: MediaItem?
     
     @State
     private var currentMediaMetadata: AsyncMetadata? = nil
@@ -108,7 +108,7 @@ struct MediaPlayerView: View {
 
 private extension MediaPlayerView {
     @inline(__always)
-    var currentMediaUrl: URL? {
+    var currentMediaItem: MediaItem? {
         currentPlaylist.currentItem
     }
 }
@@ -129,9 +129,8 @@ private extension MediaPlayerView {
             }
             
             
-            .onChange(of: currentMediaUrl) { oldUrl, newUrl in
-                oldUrl?.stopAccessingSecurityScopedResource()
-                prepareNewMedia(from: newUrl)
+            .onChange(of: currentMediaItem, initial: true) { old, new in
+                prepareNewMedia(from: new)
             }
             
             
@@ -156,9 +155,8 @@ private extension MediaPlayerView {
             }
             
             
-            .onChange(of: currentMediaUrl) { newUrl in
-                previousMediaUrl?.stopAccessingSecurityScopedResource()
-                defer { previousMediaUrl = newUrl }
+            .onChange(of: currentMediaItem) { newUrl in
+                defer { previousMediaItem = newUrl }
                 prepareNewMedia(from: newUrl)
             }
             
@@ -227,22 +225,17 @@ private extension MediaPlayerView {
 // MARK: - Responding to the uesr
 
 private extension MediaPlayerView {
-    func prepareNewMedia(from newUrl: URL?) {
+    func prepareNewMedia(from newItem: MediaItem?) {
         
         currentMediaMetadata = nil
         
-        guard let newUrl else {
+        guard let newItem else {
             player.replaceCurrentItem(with: nil)
             UIApplication.shared.endReceivingRemoteControlEvents()
             return
         }
         
-        guard newUrl.startAccessingSecurityScopedResource() else {
-            print("oops can't")
-            return
-        }
-        
-        player.replaceCurrentItem(with: .init(url: newUrl))
+        player.replaceCurrentItem(with: .init(newItem))
         player.seek(to: .zero)
         
         do {
@@ -280,7 +273,7 @@ private extension MediaPlayerView {
     ///
     /// - Parameter key: Identifies the metadata you want
     func metadata<Value>(_ key: AsyncMetadataKey<Value>) -> MetadataSearchResult<Value>? {
-        guard nil != currentMediaUrl else { return nil }
+        guard nil != currentMediaItem else { return nil }
         switch currentMediaMetadata?.get(key) {
         case nil, .stillSearching: return .stillSearching
         case .found(let value):    return .found(value: value)
@@ -293,10 +286,10 @@ private extension MediaPlayerView {
         switch metadata(.title) {
         case .stillSearching: "..."
         case .found(value: let value): "\(value)"
-        case .none: nil == currentMediaUrl ? "Pick something to play :3" : ""
+        case .none: nil == currentMediaItem ? "Pick something to play :3" : ""
         case .notFound:
-            if let currentMediaUrl {
-                "\(currentMediaUrl.deletingPathExtension().lastPathComponent)"
+            if let currentMediaItem {
+                "\(currentMediaItem.autoAccessSecurityScopedResourceUrl.deletingPathExtension().lastPathComponent)"
             }
             else {
                 "Untitled"

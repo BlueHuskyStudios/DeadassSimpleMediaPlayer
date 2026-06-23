@@ -3,10 +3,13 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		092B44D12FE695D8004EE1B5 /* ConcurrencyTools in Frameworks */ = {isa = PBXBuildFile; productRef = 092B44D02FE695D8004EE1B5 /* ConcurrencyTools */; };
+		0988E1192FEA0A8400A4E9BA /* AsyncAlgorithms in Frameworks */ = {isa = PBXBuildFile; productRef = 0988E1182FEA0A8400A4E9BA /* AsyncAlgorithms */; };
+		0988E11B2FEA0A8400A4E9BA /* AsyncStreaming in Frameworks */ = {isa = PBXBuildFile; productRef = 0988E11A2FEA0A8400A4E9BA /* AsyncStreaming */; };
 		B955C4592C43894900637C85 /* Playlist.swift in Sources */ = {isa = PBXBuildFile; fileRef = B955C4582C43894900637C85 /* Playlist.swift */; };
 		B955C45A2C43894900637C85 /* Playlist.swift in Sources */ = {isa = PBXBuildFile; fileRef = B955C4582C43894900637C85 /* Playlist.swift */; };
 		B955C4602C438E2700637C85 /* SafeCollectionAccess in Frameworks */ = {isa = PBXBuildFile; productRef = B955C45F2C438E2700637C85 /* SafeCollectionAccess */; };
@@ -75,6 +78,10 @@
 		B9C6C1772C336BFD009F6AC7 /* AVKit + Sendable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AVKit + Sendable.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		0988E11C2FEA0DF700A4E9BA /* CollectionTools */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = CollectionTools; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
 /* Begin PBXFrameworksBuildPhase section */
 		B994DD842C38E1D1001C151D /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
@@ -93,12 +100,15 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				092B44D12FE695D8004EE1B5 /* ConcurrencyTools in Frameworks */,
 				B989BF7C2C22411D007D589E /* CrossKitTypes in Frameworks */,
 				B955C4652C43977F00637C85 /* BasicMathTools in Frameworks */,
 				B955C4602C438E2700637C85 /* SafeCollectionAccess in Frameworks */,
 				B9B940B12C3C527C00E54F32 /* SpecialString in Frameworks */,
+				0988E11B2FEA0A8400A4E9BA /* AsyncStreaming in Frameworks */,
 				B96595BF2C18DFF7006348E6 /* SimpleLogging in Frameworks */,
 				B96595BC2C18C071006348E6 /* LazyContainers in Frameworks */,
+				0988E1192FEA0A8400A4E9BA /* AsyncAlgorithms in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -129,6 +139,7 @@
 		B9A692402C44BADC0032FB7B /* Rougeware */ = {
 			isa = PBXGroup;
 			children = (
+				0988E11C2FEA0DF700A4E9BA /* CollectionTools */,
 				B9A692412C44BAE20032FB7B /* LazyContainers */,
 			);
 			path = Rougeware;
@@ -227,6 +238,9 @@
 			);
 			dependencies = (
 			);
+			fileSystemSynchronizedGroups = (
+				0988E11C2FEA0DF700A4E9BA /* CollectionTools */,
+			);
 			name = "Dead-Simple Media Player for iOS 16";
 			packageProductDependencies = (
 				B994DD772C38E1D1001C151D /* LazyContainers */,
@@ -252,6 +266,9 @@
 			);
 			dependencies = (
 			);
+			fileSystemSynchronizedGroups = (
+				0988E11C2FEA0DF700A4E9BA /* CollectionTools */,
+			);
 			name = "Dead-Simple Media Player";
 			packageProductDependencies = (
 				B96595BB2C18C071006348E6 /* LazyContainers */,
@@ -260,6 +277,9 @@
 				B9B940B02C3C527C00E54F32 /* SpecialString */,
 				B955C45F2C438E2700637C85 /* SafeCollectionAccess */,
 				B955C4642C43977F00637C85 /* BasicMathTools */,
+				092B44D02FE695D8004EE1B5 /* ConcurrencyTools */,
+				0988E1182FEA0A8400A4E9BA /* AsyncAlgorithms */,
+				0988E11A2FEA0A8400A4E9BA /* AsyncStreaming */,
 			);
 			productName = DeadassSimpleMusicPlayer;
 			productReference = B9B6F0D82C1511390093BAED /* Dead-Simple Media Player.app */;
@@ -296,6 +316,8 @@
 				B9B940AC2C3C526800E54F32 /* XCRemoteSwiftPackageReference "Swift-Special-String" */,
 				B955C45E2C438E2700637C85 /* XCRemoteSwiftPackageReference "Swift-Safe-Collection-Access" */,
 				B955C4632C43977F00637C85 /* XCRemoteSwiftPackageReference "Swift-Basic-Math-Tools" */,
+				092B44CF2FE69430004EE1B5 /* XCRemoteSwiftPackageReference "Swift-Concurrency-Tools" */,
+				0988E1172FEA0A8400A4E9BA /* XCRemoteSwiftPackageReference "swift-async-algorithms" */,
 			);
 			productRefGroup = B9B6F0D92C1511390093BAED /* Products */;
 			projectDirPath = "";
@@ -604,10 +626,10 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 26;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 14.5;
+				MACOSX_DEPLOYMENT_TARGET = 26;
 				MARKETING_VERSION = 0.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = me.kyleggiero.DeadassSimpleMediaPlayer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -618,7 +640,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -649,10 +671,10 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 26;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 14.5;
+				MACOSX_DEPLOYMENT_TARGET = 26;
 				MARKETING_VERSION = 0.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = me.kyleggiero.DeadassSimpleMediaPlayer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -663,7 +685,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -701,6 +723,22 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		092B44CF2FE69430004EE1B5 /* XCRemoteSwiftPackageReference "Swift-Concurrency-Tools" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RougeWare/Swift-Concurrency-Tools";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.3.0;
+			};
+		};
+		0988E1172FEA0A8400A4E9BA /* XCRemoteSwiftPackageReference "swift-async-algorithms" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-async-algorithms.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.1.4;
+			};
+		};
 		B955C45E2C438E2700637C85 /* XCRemoteSwiftPackageReference "Swift-Safe-Collection-Access" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/RougeWare/Swift-Safe-Collection-Access.git";
@@ -730,7 +768,7 @@
 			repositoryURL = "https://github.com/RougeWare/Swift-Simple-Logging";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 0.5.2;
+				minimumVersion = "0.6.0-Beta.3";
 			};
 		};
 		B989BF7A2C22411D007D589E /* XCRemoteSwiftPackageReference "Swift-Cross-Kit-Types" */ = {
@@ -776,6 +814,21 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		092B44D02FE695D8004EE1B5 /* ConcurrencyTools */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 092B44CF2FE69430004EE1B5 /* XCRemoteSwiftPackageReference "Swift-Concurrency-Tools" */;
+			productName = ConcurrencyTools;
+		};
+		0988E1182FEA0A8400A4E9BA /* AsyncAlgorithms */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0988E1172FEA0A8400A4E9BA /* XCRemoteSwiftPackageReference "swift-async-algorithms" */;
+			productName = AsyncAlgorithms;
+		};
+		0988E11A2FEA0A8400A4E9BA /* AsyncStreaming */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0988E1172FEA0A8400A4E9BA /* XCRemoteSwiftPackageReference "swift-async-algorithms" */;
+			productName = AsyncStreaming;
+		};
 		B955C45F2C438E2700637C85 /* SafeCollectionAccess */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = B955C45E2C438E2700637C85 /* XCRemoteSwiftPackageReference "Swift-Safe-Collection-Access" */;

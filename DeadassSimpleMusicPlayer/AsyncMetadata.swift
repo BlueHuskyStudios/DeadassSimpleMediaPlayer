@@ -9,10 +9,15 @@ import Combine
 import Foundation
 import AVKit
 
+import ConcurrencyTools
 import CrossKitTypes
 import LazyContainers
 import SimpleLogging
 import SpecialString
+
+
+
+public typealias Metadata = Sendable & Equatable
 
 
 
@@ -28,7 +33,7 @@ public final class AsyncMetadata: @unchecked Sendable { // Pro tip: periodically
     private let assetMetadata: [AVMetadataItem]
     
     /// The metadata that this extracted & parsed from the asset
-    private var __cache: [AsyncMetadataKeyId : MetadataSearchResult<any Sendable>] = [:] {
+    private var __cache: [AsyncMetadataKeyId: CachedSearch] = [:] {
         didSet {
             Task {
                 await MainActor.run {
@@ -45,6 +50,13 @@ public final class AsyncMetadata: @unchecked Sendable { // Pro tip: periodically
     init(extractingMetadataFromAsset asset: AVAsset) async throws {
         self.assetMetadata = try await asset.load(.metadata)
     }
+    
+    
+    
+    /// One lazy search per metadata key, value-erased so heterogeneous keys
+    /// can share storage. Re-cast to the key's `Value` at the public API
+    /// boundary, matching the erasure pattern already used in this file.
+    private typealias CachedSearch = AsyncLazy<(any Sendable)?>
 }
 #else
 public final class AsyncMetadata: @unchecked Sendable, Observable { // Pro tip: periodically remove `Sendable` conformance to make sure things are okay. This is only `@unchecked` for `__cache` and `Sendable` for `get(_:)`. We also make Our own checks for race conditions in `__findMetadata(_:)`
@@ -81,7 +93,7 @@ public final class AsyncMetadata: @unchecked Sendable, Observable { // Pro tip: 
 
 public extension AsyncMetadata {
     convenience init(extractingMetadataFrom url: URL) async throws {
-        try await self.init(extractingMetadataFromAsset: .init(url: url))
+        try await self.init(extractingMetadataFromAsset: AVURLAsset(url: url))
     }
 }
 
@@ -155,6 +167,7 @@ public extension AsyncMetadata {
 // MARK: Default keys
 
 public extension AsyncMetadataKey where Value == String {
+    
     /// The media's title (or name)
     static let title = Self(id: "title", identifiers: [
         .quickTimeUserDataTrackName,
@@ -226,25 +239,10 @@ public extension AsyncMetadata {
     ///
     /// - Parameter key: Identifies exactly what metadata you want to retrieve, including its Type
     /// - Returns:       The current state/result of searching for that metadata.
-    func get<Value: Sendable>(_ key: Key<Value>) -> MetadataSearchResult<Value> {
-        if let cached = __cache[key.id] {
-            return cached.castValue() ?? .notFound
-        }
-        else {
-            Task { [weak self] in
-                guard let self else { return }
-                do {
-                    _ = try await self.findAndCacheMetadata(key)
-                }
-                catch {
-                    log(error: error)
-                }
-            }
-            
-            return .stillSearching
-        }
+    func get<Value: Sendable>(_ key: Key<Value>) -> LoadingState<Value> {
+        let search = __cache[key.id] ?? installSearch(for: key)
+        return search.loadingState
     }
-    
     
     /// Returns the already-found value at the given key, or searches for it.
     /// 
@@ -288,15 +286,14 @@ private extension AsyncMetadata {
     /// If a search has concluded then this saves that result in the cache and returns it.
     ///
     /// - Parameter key: Identifies exactly what metadata you want to retrieve, including its Type
-    func findAndCacheMetadata<Value: Sendable>(_ key: Key<Value>)
-    async throws -> MetadataSearchResult<Value> {
+    func findAndCacheMetadata<Value: Metadata>(_ key: Key<Value>)
+    async throws -> LoadingState<Value?> {
         let result = try await __findMetadata(key)
         switch result {
-        case .stillSearching:
-            return .stillSearching
+        case .notStarted, .loading:
+            return result
             
-        case .found(value: _),
-                .notFound:
+        case .success(_:):
             __cache[key.id] = result.erasedToAnyValue()
             return result
         }
@@ -341,75 +338,95 @@ private extension AsyncMetadata {
 
 
 
-/// The result of searching for metadata
-public enum MetadataSearchResult<Value: Sendable>: Sendable {
-    
-    /// Some search is still ongoing. Check back later for the result
-    case stillSearching
-    
-    /// A search has concluded; here is the value it found
-    /// - Parameter value: The value the search discovered
-    case found(value: Value)
-    
-    /// A search has concluded; no value was found
-    case notFound
-}
+///// The result of searching for metadata
+//public enum MetadataSearchResult<Value: Sendable>: Sendable {
+//    
+//    /// Some search is still ongoing. Check back later for the result
+//    case stillSearching
+//    
+//    /// A search has concluded; here is the value it found
+//    /// - Parameter value: The value the search discovered
+//    case found(value: Value)
+//    
+//    /// A search has concluded; no value was found
+//    case notFound
+//}
 
 
 
-public extension MetadataSearchResult {
-    var value: Value? {
-        switch self {
-        case .stillSearching,
-                .notFound:
-            nil
-            
-        case .found(let value):
-            value
-        }
+@available(*, deprecated, renamed: "LoadingState")
+public typealias MetadataSearchResult<Value: Sendable & Equatable> = LoadingState<Optional<Value>>
+
+
+
+extension MetadataSearchResult {
+    
+    @available(*, unavailable, renamed: "loading")
+    static var stillSearching: Self {
+        .loading
+    }
+    
+    @available(*, unavailable, renamed: "success(_:)", message: "Use .success(nil) instead")
+    static var notFound: Self {
+        .success(nil)
+    }
+    
+    @available(*, unavailable, renamed: "success(_:)", message:  "Use .success(value) instead")
+    static func found(value: Value) -> Self {
+        .success(value)
     }
 }
 
 
 
-private extension MetadataSearchResult {
+//public extension MetadataSearchResult {
+//    var value: Value? {
+//        switch self {
+//        case .loading,
+//                .success(nil):
+//            nil
+//            
+//        case .found(let value):
+//            value
+//        }
+//    }
+//}
+
+
+
+private extension LoadingState<Metadata?> {
     /// Returns a version of this search result where the value remains the same but is re-cast  as any type
-    func erasedToAnyValue() -> MetadataSearchResult<any Sendable> {
+    func erasedToAnyValue() -> LoadingState<(any Metadata)?> {
         switch self {
-        case .stillSearching:
-                .stillSearching
+        case .notStarted:         .notStarted
             
-        case .found(let value):
-                .found(value: value)
+        case .loading:            .loading
             
-        case .notFound:
-                .notFound
+        case .success(let value): .success(value)
         }
     }
     
     
     /// Attempts to cast this result's contained value to the given type.
     ///
-    /// If not (yet) found, this always succeeds and returns `.stillSearching` or `.notFound`.
+    /// If not (yet) found, this always succeeds and returns that state untouched.
     /// If found, this only succeeds if the contaiend value can be safely cast to the given new game; otherwise this returns `nil` instead of a search result.
     ///
     /// - Parameter valueType: _optional_ - The type to cast to. This is implied if possible
     /// - Returns: This search result, with the value cast to a different type if possible
-    func castValue<NewValue>(to valueType: NewValue.Type = NewValue.self) -> MetadataSearchResult<NewValue>? {
+    func castValue<NewValue>(to valueType: NewValue.Type = NewValue.self) -> LoadingState<NewValue?>? {
         switch self {
-        case .stillSearching:
-                return .stillSearching
+        case .notStarted:   return .notStarted
+        case .loading:      return .loading
+        case .success(nil): return .success(nil)
             
-        case .found(value: let value):
+        case .success(let value):
             if let newValue = value as? NewValue {
-                return .found(value: newValue)
+                return .success(newValue)
             }
             else {
                 return nil
             }
-            
-        case .notFound:
-            return .notFound
         }
     }
 }
@@ -425,6 +442,11 @@ extension AsyncMetadata: Equatable {
     public static func == (lhs: AsyncMetadata, rhs: AsyncMetadata) -> Bool {
         lhs.id == rhs.id
         && lhs.__cache == rhs.__cache
+    }
+    
+    
+    public static func ~= (lhs: AsyncMetadata, rhs: AsyncMetadata) -> Bool {
+        lhs.id == rhs.id
     }
 }
 
