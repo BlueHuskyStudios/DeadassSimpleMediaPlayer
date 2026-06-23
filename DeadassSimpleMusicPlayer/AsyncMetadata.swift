@@ -79,14 +79,13 @@ public extension AsyncMetadata {
 // MARK: - Observation
 
 public extension AsyncMetadata {
-    /// Every time this instance starts or concludes a search, this publisher
-    /// sends a new `Void`. Use the ``get`` methods to retrieve actual values
-    /// once a ping arrives.
+    /// Every time this instance concludes a search, this publisher sends a
+    /// new `Void`. Use the ``get`` methods to retrieve actual values once a
+    /// ping arrives.
     ///
-    /// The publisher does **not** hop to any particular executor; if a
-    /// subscriber needs main-actor delivery (typical for SwiftUI bindings),
-    /// apply `.receive(on: DispatchQueue.main)` or equivalent at the
-    /// subscription site.
+    /// Delivery is guaranteed to occur on the main actor. SwiftUI consumers
+    /// using `.onReceive` and `.sink` blocks that mutate view state can rely
+    /// on this without applying a `.receive(on:)` of their own.
     func onMetadataDidUpdate() -> AnyPublisher<Void, Never> {
         metadataUpdatePublisher.eraseToAnyPublisher()
     }
@@ -307,18 +306,29 @@ private extension AsyncMetadata {
                     matching: key
                 )
             },
-            set: { [weak self] newState in
-                switch newState {
-                case .failure(let error):
-                    log(error: error)
-                    self?.metadataUpdatePublisher.send(())
-
-                case .success:
-                    self?.metadataUpdatePublisher.send(())
-
-                case .notStarted, .loading:
-                    break
-                }
+            set: { @MainActor [weak self] newState in
+                // The publisher fires from whatever cooperative executor the
+                // binding's loader Task happened to land on. Consumers of
+                // `onMetadataDidUpdate()` in this codebase (e.g.
+                // SwiftUI's `.onReceive`, view-state mutations) are
+                // MainActor-isolated, so a background-thread send traps via
+                // `swift_task_checkIsolatedSwift`. Restoring main-actor
+                // delivery here matches the original contract from before
+                // the migration to `ThrowingAsyncBinding` and keeps the
+                // burden off every subscription site.
+//                await MainActor.run { [weak self] in
+                    switch newState {
+                    case .failure(let error):
+                        log(error: error)
+                        self?.metadataUpdatePublisher.send(())
+                        
+                    case .success:
+                        self?.metadataUpdatePublisher.send(())
+                        
+                    case .notStarted, .loading:
+                        break
+                    }
+//                }
             }
         )
 

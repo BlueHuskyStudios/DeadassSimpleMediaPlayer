@@ -727,8 +727,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/RougeWare/Swift-Concurrency-Tools";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.3.0;
+				branch = feature/AsyncBinding;
+				kind = branch;
 			};
 		};
 		0988E1172FEA0A8400A4E9BA /* XCRemoteSwiftPackageReference "swift-async-algorithms" */ = {

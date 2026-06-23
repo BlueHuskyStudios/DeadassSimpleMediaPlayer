@@ -1,5 +1,5 @@
 {
-  "originHash" : "2720a5e1368463ef3c478d74a7de52ea21f8e26adf2f804c258a15759c27cea8",
+  "originHash" : "9fd97ec93e908bad5578b754330cf0b91f709260ef2ee7cd439d66894d37f42a",
   "pins" : [
     {
       "identity" : "swift-async-algorithms",
@@ -33,8 +33,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/RougeWare/Swift-Concurrency-Tools",
       "state" : {
-        "revision" : "b6a284b302b76c241cfd0d5efe393048834ce7f7",
-        "version" : "0.3.0"
+        "branch" : "feature/AsyncBinding",
+        "revision" : "6ee2c1c1eea96be1bcedc907b8851ec2f6c972ec"
       }
     },
     {
