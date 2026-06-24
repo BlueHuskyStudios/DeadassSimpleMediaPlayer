@@ -305,32 +305,39 @@ private extension AsyncMetadata {
                     in: self.assetMetadata,
                     matching: key
                 )
-            },
-            set: { @MainActor [weak self] newState in
-                // The publisher fires from whatever cooperative executor the
-                // binding's loader Task happened to land on. Consumers of
-                // `onMetadataDidUpdate()` in this codebase (e.g.
-                // SwiftUI's `.onReceive`, view-state mutations) are
-                // MainActor-isolated, so a background-thread send traps via
-                // `swift_task_checkIsolatedSwift`. Restoring main-actor
-                // delivery here matches the original contract from before
-                // the migration to `ThrowingAsyncBinding` and keeps the
-                // burden off every subscription site.
-//                await MainActor.run { [weak self] in
-                    switch newState {
-                    case .failure(let error):
-                        log(error: error)
-                        self?.metadataUpdatePublisher.send(())
-                        
-                    case .success:
-                        self?.metadataUpdatePublisher.send(())
-                        
-                    case .notStarted, .loading:
-                        break
-                    }
-//                }
             }
+            // Intentionally no `set:` callback. The binding's
+            // `subject.sink { resync { ... } }` pattern bridges Combine to
+            // async via a blocking semaphore, which deadlocks when the
+            // first state (`.notStarted`) is delivered synchronously from
+            // inside `init` on the same executor that `resync` then waits
+            // on. We observe terminal transitions through the dedicated
+            // Task below instead.
         )
+
+        // Observe the search's completion (terminal state) and republish a
+        // single Void ping on the main actor.
+        //
+        // Pinned to `@MainActor` for two reasons: (1) `metadataUpdatePublisher`
+        // is consumed by SwiftUI subscribers that mutate view state, so
+        // delivery on main is part of this class's contract; (2) the
+        // observation Task is unstructured and detached from any caller
+        // isolation, so we have to be explicit about where the ping lands
+        // rather than inheriting it from whoever called `lazySearch(for:)`.
+        //
+        // The Task captures `search` strongly. That's fine — the binding is
+        // a value type whose internal storage is reference-typed, so the
+        // copy held here shares state with the copy stored in `__cache`,
+        // and the Task is short-lived (one await, then a send, then done).
+        Task { @MainActor [weak self] in
+            do {
+                _ = try await search.wrappedValue
+            }
+            catch {
+                log(error: error)
+            }
+            self?.metadataUpdatePublisher.send(())
+        }
 
         __cache[key.id] = search
         return search

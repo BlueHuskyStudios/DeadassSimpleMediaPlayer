@@ -33,8 +33,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/RougeWare/Swift-Concurrency-Tools",
       "state" : {
-        "branch" : "feature/AsyncBinding",
-        "revision" : "6ee2c1c1eea96be1bcedc907b8851ec2f6c972ec"
+        "revision" : "c67b236c567751024e6dbf5659dc0b7f9dcf3583",
+        "version" : "0.3.1"
       }
     },
     {
