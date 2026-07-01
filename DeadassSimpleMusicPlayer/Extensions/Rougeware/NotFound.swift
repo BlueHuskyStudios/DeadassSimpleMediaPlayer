@@ -30,3 +30,18 @@ public extension NotFound {
     @inline(__always)
     static var notFound: Self { .init() }
 }
+
+
+
+extension NotFound: Equatable {
+    @inline(__always)
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        true
+    }
+    
+    
+    @inline(__always)
+    public static func ~= (lhs: Self, rhs: Self) -> Bool {
+        true
+    }
+}

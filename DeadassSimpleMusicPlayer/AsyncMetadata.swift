@@ -201,6 +201,15 @@ public extension AsyncMetadataKey where Value == String {
         .id3MetadataOriginalArtist,
         .id3MetadataPublisher,
     ])
+
+    /// The album (or collection, or compilation) the media belongs to.
+    static let album = Self(id: "album", identifiers: [
+        .commonIdentifierAlbumName,
+        .iTunesMetadataAlbum,
+        .id3MetadataAlbumTitle,
+        .quickTimeMetadataAlbum,
+        .quickTimeUserDataAlbum,
+    ])
 }
 
 
@@ -374,7 +383,11 @@ private extension AsyncMetadata {
 
         return typedValue as any Sendable
     }
-    
+}
+
+
+
+internal extension AsyncMetadata {
     
     /// Type-erased per-key search.
     ///
@@ -413,7 +426,7 @@ public extension MetadataSearchResult where Failure == NotFound {
     
     /// A search has concluded; here is the value it found.
     /// - Parameter value: The value the search discovered.
-    @available(*, renamed: "success(_:)", message:  "Use .success(value) instead")
+    @available(*, deprecated, renamed: "success(_:)", message:  "Use .success(value) instead")
     static func found(value: Success) -> Self {
         .success(value)
     }
@@ -452,7 +465,7 @@ internal extension MetadataSearchResult where Failure == NotFound {
             
         case .success(.some(let erased)):
             if let typed = erased as? Success {
-                self = .found(value: typed)
+                self = .success(typed)
             }
             else {
                 self = .notFound

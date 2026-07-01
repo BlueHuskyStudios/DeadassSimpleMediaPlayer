@@ -7,6 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		092A40762FF5C8D900B05BB3 /* MediaReference.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092A40732FF5C8D900B05BB3 /* MediaReference.swift */; };
+		092A40772FF5C8D900B05BB3 /* PlaylistEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092A40742FF5C8D900B05BB3 /* PlaylistEntry.swift */; };
+		092A40782FF5C8D900B05BB3 /* RepeatMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092A40752FF5C8D900B05BB3 /* RepeatMode.swift */; };
+		092A40792FF5C8D900B05BB3 /* MediaReference.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092A40732FF5C8D900B05BB3 /* MediaReference.swift */; };
+		092A407A2FF5C8D900B05BB3 /* PlaylistEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092A40742FF5C8D900B05BB3 /* PlaylistEntry.swift */; };
+		092A407B2FF5C8D900B05BB3 /* RepeatMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092A40752FF5C8D900B05BB3 /* RepeatMode.swift */; };
+		092A408C2FF5D6B600B05BB3 /* CollectionTools in Frameworks */ = {isa = PBXBuildFile; productRef = 092A408B2FF5D6B600B05BB3 /* CollectionTools */; };
 		092B44D12FE695D8004EE1B5 /* ConcurrencyTools in Frameworks */ = {isa = PBXBuildFile; productRef = 092B44D02FE695D8004EE1B5 /* ConcurrencyTools */; };
 		0988E1192FEA0A8400A4E9BA /* AsyncAlgorithms in Frameworks */ = {isa = PBXBuildFile; productRef = 0988E1182FEA0A8400A4E9BA /* AsyncAlgorithms */; };
 		0988E11B2FEA0A8400A4E9BA /* AsyncStreaming in Frameworks */ = {isa = PBXBuildFile; productRef = 0988E11A2FEA0A8400A4E9BA /* AsyncStreaming */; };
@@ -57,6 +64,9 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		092A40732FF5C8D900B05BB3 /* MediaReference.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaReference.swift; sourceTree = "<group>"; };
+		092A40742FF5C8D900B05BB3 /* PlaylistEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistEntry.swift; sourceTree = "<group>"; };
+		092A40752FF5C8D900B05BB3 /* RepeatMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepeatMode.swift; sourceTree = "<group>"; };
 		09F974792FEBA2F1001028C0 /* NotFound.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotFound.swift; sourceTree = "<group>"; };
 		B955C4582C43894900637C85 /* Playlist.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Playlist.swift; sourceTree = "<group>"; };
 		B955C46C2C442A7900637C85 /* URL security + sugar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "URL security + sugar.swift"; sourceTree = "<group>"; };
@@ -81,6 +91,9 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		092A407E2FF5C90A00B05BB3 /* Library */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Library; sourceTree = "<group>"; };
+		092A40852FF5C91F00B05BB3 /* Persistence */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Persistence; sourceTree = "<group>"; };
+		092A408D2FF5D73100B05BB3 /* ConcurrencyTools */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = ConcurrencyTools; sourceTree = "<group>"; };
 		0988E11C2FEA0DF700A4E9BA /* CollectionTools */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = CollectionTools; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
@@ -106,6 +119,7 @@
 				B989BF7C2C22411D007D589E /* CrossKitTypes in Frameworks */,
 				B955C4652C43977F00637C85 /* BasicMathTools in Frameworks */,
 				B955C4602C438E2700637C85 /* SafeCollectionAccess in Frameworks */,
+				092A408C2FF5D6B600B05BB3 /* CollectionTools in Frameworks */,
 				B9B940B12C3C527C00E54F32 /* SpecialString in Frameworks */,
 				0988E11B2FEA0A8400A4E9BA /* AsyncStreaming in Frameworks */,
 				B96595BF2C18DFF7006348E6 /* SimpleLogging in Frameworks */,
@@ -130,6 +144,9 @@
 		B989BF772C223725007D589E /* Media Player */ = {
 			isa = PBXGroup;
 			children = (
+				092A40732FF5C8D900B05BB3 /* MediaReference.swift */,
+				092A40742FF5C8D900B05BB3 /* PlaylistEntry.swift */,
+				092A40752FF5C8D900B05BB3 /* RepeatMode.swift */,
 				B9B6F0DD2C1511390093BAED /* MediaPlayerView.swift */,
 				B989BF782C223748007D589E /* Player.swift */,
 				B955C4582C43894900637C85 /* Playlist.swift */,
@@ -142,6 +159,7 @@
 			isa = PBXGroup;
 			children = (
 				0988E11C2FEA0DF700A4E9BA /* CollectionTools */,
+				092A408D2FF5D73100B05BB3 /* ConcurrencyTools */,
 				B9A692412C44BAE20032FB7B /* LazyContainers */,
 				09F974792FEBA2F1001028C0 /* NotFound.swift */,
 			);
@@ -181,8 +199,10 @@
 				B994DD8F2C38E1D2001C151D /* iOS 16-Info.plist */,
 				B9B6F0DB2C1511390093BAED /* App.swift */,
 				B9B6F0ED2C151DA00093BAED /* ContentView.swift */,
-				B989BF772C223725007D589E /* Media Player */,
 				B9B940A72C3C4DB300E54F32 /* Extensions */,
+				092A407E2FF5C90A00B05BB3 /* Library */,
+				B989BF772C223725007D589E /* Media Player */,
+				092A40852FF5C91F00B05BB3 /* Persistence */,
 				B96595B82C18BD4E006348E6 /* AsyncMetadata.swift */,
 				B9C6C1772C336BFD009F6AC7 /* AVKit + Sendable.swift */,
 				B9B6F0DF2C15113C0093BAED /* Assets.xcassets */,
@@ -241,6 +261,9 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				092A407E2FF5C90A00B05BB3 /* Library */,
+				092A40852FF5C91F00B05BB3 /* Persistence */,
+				092A408D2FF5D73100B05BB3 /* ConcurrencyTools */,
 				0988E11C2FEA0DF700A4E9BA /* CollectionTools */,
 			);
 			name = "Dead-Simple Media Player for iOS 16";
@@ -269,6 +292,9 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				092A407E2FF5C90A00B05BB3 /* Library */,
+				092A40852FF5C91F00B05BB3 /* Persistence */,
+				092A408D2FF5D73100B05BB3 /* ConcurrencyTools */,
 				0988E11C2FEA0DF700A4E9BA /* CollectionTools */,
 			);
 			name = "Dead-Simple Media Player";
@@ -282,6 +308,7 @@
 				092B44D02FE695D8004EE1B5 /* ConcurrencyTools */,
 				0988E1182FEA0A8400A4E9BA /* AsyncAlgorithms */,
 				0988E11A2FEA0A8400A4E9BA /* AsyncStreaming */,
+				092A408B2FF5D6B600B05BB3 /* CollectionTools */,
 			);
 			productName = DeadassSimpleMusicPlayer;
 			productReference = B9B6F0D82C1511390093BAED /* Dead-Simple Media Player.app */;
@@ -320,6 +347,7 @@
 				B955C4632C43977F00637C85 /* XCRemoteSwiftPackageReference "Swift-Basic-Math-Tools" */,
 				092B44CF2FE69430004EE1B5 /* XCRemoteSwiftPackageReference "Swift-Concurrency-Tools" */,
 				0988E1172FEA0A8400A4E9BA /* XCRemoteSwiftPackageReference "swift-async-algorithms" */,
+				092A408A2FF5D6B600B05BB3 /* XCRemoteSwiftPackageReference "Swift-Collection-Tools" */,
 			);
 			productRefGroup = B9B6F0D92C1511390093BAED /* Products */;
 			projectDirPath = "";
@@ -358,6 +386,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				B994DD7E2C38E1D1001C151D /* MediaPlayerView.swift in Sources */,
+				092A40792FF5C8D900B05BB3 /* MediaReference.swift in Sources */,
+				092A407A2FF5C8D900B05BB3 /* PlaylistEntry.swift in Sources */,
+				092A407B2FF5C8D900B05BB3 /* RepeatMode.swift in Sources */,
 				B9B940AB2C3C4DDB00E54F32 /* onRecieve + nil.swift in Sources */,
 				B994DD7F2C38E1D1001C151D /* AVKit + Sendable.swift in Sources */,
 				B994DD802C38E1D1001C151D /* AsyncMetadata.swift in Sources */,
@@ -379,6 +410,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				B9B6F0DE2C1511390093BAED /* MediaPlayerView.swift in Sources */,
+				092A40762FF5C8D900B05BB3 /* MediaReference.swift in Sources */,
+				092A40772FF5C8D900B05BB3 /* PlaylistEntry.swift in Sources */,
+				092A40782FF5C8D900B05BB3 /* RepeatMode.swift in Sources */,
 				B9B940AA2C3C4DDB00E54F32 /* onRecieve + nil.swift in Sources */,
 				B9C6C1782C336BFD009F6AC7 /* AVKit + Sendable.swift in Sources */,
 				B96595B92C18BD4E006348E6 /* AsyncMetadata.swift in Sources */,
@@ -727,6 +761,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		092A408A2FF5D6B600B05BB3 /* XCRemoteSwiftPackageReference "Swift-Collection-Tools" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RougeWare/Swift-Collection-Tools.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.2.1;
+			};
+		};
 		092B44CF2FE69430004EE1B5 /* XCRemoteSwiftPackageReference "Swift-Concurrency-Tools" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/RougeWare/Swift-Concurrency-Tools";
@@ -818,6 +860,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		092A408B2FF5D6B600B05BB3 /* CollectionTools */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 092A408A2FF5D6B600B05BB3 /* XCRemoteSwiftPackageReference "Swift-Collection-Tools" */;
+			productName = CollectionTools;
+		};
 		092B44D02FE695D8004EE1B5 /* ConcurrencyTools */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 092B44CF2FE69430004EE1B5 /* XCRemoteSwiftPackageReference "Swift-Concurrency-Tools" */;

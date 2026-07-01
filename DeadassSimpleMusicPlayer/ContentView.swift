@@ -39,10 +39,8 @@ struct ContentView: View {
                     switch result {
                     case .success(let openedUrl):
                         Task {
-                            guard let openedItem = await Playlist.Item(url: openedUrl) else {
-                                return
-                            }
-                            currentPlaylist.append(openedItem)
+                            let newEntries = await Playlist.entries(fromUrl: openedUrl)
+                            currentPlaylist.append(contentsOf: newEntries)
                         }
                         
                     case .failure(let failure):

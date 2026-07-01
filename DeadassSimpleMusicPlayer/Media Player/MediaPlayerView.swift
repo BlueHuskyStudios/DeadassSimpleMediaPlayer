@@ -14,6 +14,7 @@ import SwiftUI
 import UIKit
 #endif
 
+import CollectionTools
 import SimpleLogging
 
 
@@ -109,7 +110,7 @@ struct MediaPlayerView: View {
 private extension MediaPlayerView {
     @inline(__always)
     var currentMediaItem: MediaItem? {
-        currentPlaylist.currentItem
+        currentPlaylist.currentEntry?.mediaItem
     }
 }
 
@@ -199,7 +200,7 @@ private extension MediaPlayerView {
 private extension MediaPlayerView {
     func prepareNewMedia(from newItem: MediaItem?) {
         
-        currentMediaMetadata = nil
+        currentMediaMetadata = newItem?.metadata
         
         guard let newItem else {
             player.replaceCurrentItem(with: nil)
@@ -216,22 +217,6 @@ private extension MediaPlayerView {
         catch {
             log(error: error)
         }
-        
-        
-        Task { [self] in
-            guard let asset = self.player.currentItem?.asset else { return }
-            do {
-                let metadata = try await asset.asyncMetadata()
-                self.currentMediaMetadata = metadata
-                metadata.onMetadataDidUpdate().sink {
-                    forceUpdateBodge.toggle()
-                }
-                .store(in: &sinks)
-            }
-            catch {
-                log(error: error)
-            }
-        }
     }
 }
 
@@ -247,35 +232,34 @@ private extension MediaPlayerView {
     func metadata<Value>(_ key: AsyncMetadataKey<Value>) -> MetadataSearchResult<Value>? {
         guard nil != currentMediaItem else { return nil }
         switch currentMediaMetadata?.get(key) {
-        case nil, .stillSearching: return .stillSearching
-        case .found(let value):    return .found(value: value)
-        case .notFound:            return .notFound
+        case .none:                return .none
+        case .notStarted:          return .notStarted
+        case .loading:             return .loading
+        case .success(let value):  return .success(value)
+        case .failure(let cause):  return .failure(cause)
         }
     }
     
     
     var titleText: LocalizedStringKey {
         switch metadata(.title) {
-        case .stillSearching: "..."
-        case .found(value: let value): "\(value)"
         case .none: nil == currentMediaItem ? "Pick something to play :3" : ""
-        case .notFound:
-            if let currentMediaItem {
-                "\(currentMediaItem.autoAccessSecurityScopedResourceUrl.deletingPathExtension().lastPathComponent)"
-            }
-            else {
-                "Untitled"
-            }
+        case .notStarted: "…"
+        case .loading: "⋯"
+        case .success(let value): "\(value)"
+        case .failure(_): // If we ever add more possible error cases than NotFound, this needs updating
+            (currentMediaItem?.autoAccessSecurityScopedResourceUrl.deletingPathExtension().lastPathComponent.nonEmptyOrNil).map { "\($0)" } ?? "Untitled"
         }
     }
     
     
     var creatorText: LocalizedStringKey {
         switch metadata(.creator) {
-        case .stillSearching: "..."
-        case .found(let value): "\(value)"
-        case .notFound: ""
-        case nil: ""
+        case .none: ""
+        case .notStarted: "⋯"
+        case .loading: "…"
+        case .success(let value): "\(value)"
+        case .failure(_): ""
         }
     }
 }
@@ -314,7 +298,7 @@ private extension MediaPlayerView {
         var nowPlayingInfo = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
         nowPlayingInfo[MPMediaItemPropertyTitle] = metadata(.title)
 
-        if let image = metadata(.image)?.value ?? nil {
+        if let image = try? metadata(.image)?.value ?? nil { //??nil can't believe I still have to battle auto-double-optionals
             nowPlayingInfo[MPMediaItemPropertyArtwork] =
                 MPMediaItemArtwork(boundsSize: image.size) { _ in image }
             
