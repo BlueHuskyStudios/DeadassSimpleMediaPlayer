@@ -1,5 +1,5 @@
 //
-//  AVMediaPlayer.swift
+//  Player.swift
 //  Dead-Simple Media Player
 //
 //  Created by Ky on 2024-06-18.
@@ -11,7 +11,7 @@ import SwiftUI
 
 
 /// A UIKit/SwiftUI translation layer between ``AVPlayer`` and ``MediaPlayerView``
-struct AVMediaPlayer: UIViewControllerRepresentable {
+struct Player: UIViewControllerRepresentable {
     
     /// The player to shim into this UI layer
     let player: AVPlayer

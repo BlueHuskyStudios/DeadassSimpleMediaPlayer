@@ -17,6 +17,10 @@ import SpecialString
 
 
 
+public typealias Metadata = Sendable & Equatable
+
+
+
 /// An easy-to-use abstraction of fetching metadata from an `AVAsset`.
 ///
 /// Each metadata key has its own lazy search, owned by a `ThrowingAsyncBinding`
@@ -87,7 +91,7 @@ public extension AsyncMetadata {
     /// using `.onReceive` and `.sink` blocks that mutate view state can rely
     /// on this without applying a `.receive(on:)` of their own.
     func onMetadataDidUpdate() -> AnyPublisher<Void, Never> {
-        metadataUpdatePublisher.eraseToAnyPublisher()
+        metadataUpdatePublisher.receive(on: RunLoop.main).eraseToAnyPublisher()
     }
 }
 
@@ -270,7 +274,7 @@ public extension AsyncMetadata {
 // MARK: - Caching & Searching
 
 private extension AsyncMetadata {
-
+    
     /// Returns the existing lazy search for `key`, installing a new one if
     /// none exists.
     ///
@@ -291,9 +295,8 @@ private extension AsyncMetadata {
         if let existing = __cache[key.id] {
             return existing
         }
-
-        let search = CachedSearch(
-            { [weak self] in
+        
+        let search = CachedSearch { [weak self] in
                 guard let self else {
                     // The owning AsyncMetadata has been deallocated;
                     // there's nothing meaningful to return. The binding
@@ -306,15 +309,8 @@ private extension AsyncMetadata {
                     matching: key
                 )
             }
-            // Intentionally no `set:` callback. The binding's
-            // `subject.sink { resync { ... } }` pattern bridges Combine to
-            // async via a blocking semaphore, which deadlocks when the
-            // first state (`.notStarted`) is delivered synchronously from
-            // inside `init` on the same executor that `resync` then waits
-            // on. We observe terminal transitions through the dedicated
-            // Task below instead.
-        )
-
+        
+        
         // Observe the search's completion (terminal state) and republish a
         // single Void ping on the main actor.
         //
@@ -342,8 +338,8 @@ private extension AsyncMetadata {
         __cache[key.id] = search
         return search
     }
-
-
+    
+    
     /// Performs the actual AVFoundation lookup for a given key.
     ///
     /// Pure (no `self`) so the closure stored in the binding can capture
@@ -392,15 +388,50 @@ private extension AsyncMetadata {
     /// error type, and `any Error` satisfies the binding's
     /// `Failure: Sendable` constraint via `Error`'s inherited `Sendable`
     /// conformance.
-    typealias CachedSearch = ThrowingAsyncBinding<(any Sendable)?, any Error>
+    typealias CachedSearch = ThrowingAsyncLazy<(any Sendable)?, any Error>
+}
+
+
+
+// MARK: - Search result
+
+/// The result of searching for metadata.
+//@available(*, deprecated, renamed: "LoadingState")
+public typealias MetadataSearchResult<Value: Metadata> = FailableLoadingState<Value, NotFound>
+
+
+
+//@available(*, deprecated, renamed: "LoadingState")
+public extension MetadataSearchResult where Failure == NotFound {
+    
+    /// Some search is still ongoing. Check back later for the result.
+    @available(*, renamed: "loading")
+    static var stillSearching: Self {
+        .loading
+    }
+    
+    
+    /// A search has concluded; here is the value it found.
+    /// - Parameter value: The value the search discovered.
+    @available(*, renamed: "success(_:)", message:  "Use .success(value) instead")
+    static func found(value: Success) -> Self {
+        .success(value)
+    }
+    
+    
+    /// A search has concluded; no value was found.
+    @available(*, renamed: "failure(_:)", message: "Use .failure(NotFound()) instead")
+    static var notFound: Self {
+        .failure(Failure())
+    }
 }
 
 
 
 // MARK: - Bridge from loading state to public result enum
 
-internal extension MetadataSearchResult {
-
+internal extension MetadataSearchResult where Failure == NotFound {
+    
     /// Bridges a `ThrowingAsyncBinding`'s loading state into the public
     /// result enum.
     ///
@@ -411,22 +442,22 @@ internal extension MetadataSearchResult {
     /// happen if a key is registered for an identifier whose loaded value
     /// type doesn't match `Value`, which is a programmer error rather than
     /// a runtime condition the caller can act on.
-    init(loadingState: FailableLoadingState<(any Sendable)?, any Error>) {
+    init(loadingState: AsyncMetadata.CachedSearch.LoadingState) {
         switch loadingState {
         case .notStarted, .loading:
             self = .stillSearching
-
+            
         case .success(nil):
             self = .notFound
-
+            
         case .success(.some(let erased)):
-            if let typed = erased as? Value {
+            if let typed = erased as? Success {
                 self = .found(value: typed)
             }
             else {
                 self = .notFound
             }
-
+            
         case .failure:
             // The error was already logged when it first occurred (in the
             // binding's `onDidChange` callback). Don't re-log on every read.
@@ -437,77 +468,29 @@ internal extension MetadataSearchResult {
 
 
 
-// MARK: - Search result
-
-/// The result of searching for metadata.
-public enum MetadataSearchResult<Value: Sendable>: Sendable {
-
-    /// Some search is still ongoing. Check back later for the result.
-    case stillSearching
-
-    /// A search has concluded; here is the value it found.
-    /// - Parameter value: The value the search discovered.
-    case found(value: Value)
-
-    /// A search has concluded; no value was found.
-    case notFound
-}
-
-
-
-public extension MetadataSearchResult {
-    var value: Value? {
-        switch self {
-        case .stillSearching,
-             .notFound:
-            nil
-
-        case .found(let value):
-            value
-        }
-    }
-}
-
-
-
-internal extension MetadataSearchResult {
-    /// Returns a version of this search result where the value remains the
-    /// same but is re-cast as `any Sendable`.
-    func erasedToAnyValue() -> MetadataSearchResult<any Sendable> {
-        switch self {
-        case .stillSearching:
-                .stillSearching
-
-        case .found(let value):
-                .found(value: value)
-
-        case .notFound:
-                .notFound
-        }
-    }
-
-
+public extension LoadingState {
+    
     /// Attempts to cast this result's contained value to the given type.
     ///
     /// If not (yet) found, this always succeeds and returns
     /// `.stillSearching` or `.notFound`. If found, this only succeeds if
     /// the contained value can be safely cast to the given type; otherwise
     /// this returns `nil` instead of a search result.
-    func castValue<NewValue>(to valueType: NewValue.Type = NewValue.self) -> MetadataSearchResult<NewValue>? {
+    func castValue<OldValue, NewValue>(to valueType: NewValue.Type = NewValue.self) -> LoadingState<NewValue?>?
+    where Value == Optional<OldValue>
+    {
         switch self {
-        case .stillSearching:
-            return .stillSearching
-
-        case .found(value: let value):
+        case .notStarted:   return .notStarted
+        case .loading:      return .loading
+        case .success(nil): return .success(nil)
+            
+        case .success(let value):
             if let newValue = value as? NewValue {
-                return .found(value: newValue)
+                return .success(newValue)
             }
             else {
                 return nil
             }
-
-        case .notFound:
-            return .notFound
         }
     }
 }
@@ -552,58 +535,6 @@ extension AsyncMetadataKey: Equatable {
 extension AsyncMetadataKey: Hashable {
     public func hash(into hasher: inout Hasher) {
         hasher.combine(id)
-    }
-}
-
-
-
-extension MetadataSearchResult: Equatable {
-
-    /// Two instances of `MetadataSearchResult` where their `Value`s are
-    /// _not_ `Equatable`, are considered equal if they're both in the same
-    /// general state.
-    ///
-    /// That is to say, if both are `.stillSearching`, if both are
-    /// `.notFound`, or if both are `.found` regardless of value.
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        switch (lhs, rhs) {
-        case (.stillSearching, .stillSearching),
-             (.found, .found),
-             (.notFound, .notFound):
-            return true
-
-        case (.stillSearching, _),
-             (.found, _),
-             (.notFound, _):
-            return false
-        }
-    }
-
-
-    /// Two instances of `MetadataSearchResult` where their `Value`s are
-    /// `Equatable`, are considered equal if they're both in the same
-    /// general state and, if that state contains a value, those values are
-    /// also equal.
-    ///
-    /// That is to say, if both are `.stillSearching`, if both are
-    /// `.notFound`, or if both are `.found` where the found values are
-    /// also equal.
-    public static func == (lhs: Self, rhs: Self) -> Bool
-    where Value: Equatable
-    {
-        switch (lhs, rhs) {
-        case (.found(value: let lhsValue), .found(value: let rhsValue)):
-            return lhsValue == rhsValue
-
-        case (.stillSearching, .stillSearching),
-             (.notFound, .notFound):
-            return true
-
-        case (.stillSearching, _),
-             (.found, _),
-             (.notFound, _):
-            return false
-        }
     }
 }
 

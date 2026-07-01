@@ -53,7 +53,7 @@ struct MediaPlayerView: View {
     private var forceUpdateBodge = Bool()
     
     @State
-    private var pipStatus = AVMediaPlayer.PipStatus.undefined
+    private var pipStatus = Player.PipStatus.undefined
     
     
     // MARK: `View`
@@ -121,55 +121,27 @@ private extension MediaPlayerView {
     
     @ViewBuilder
     var baseBodyAndChangeReactions: some View {
-        if #available(iOS 17.0, *) {
-            ZStack {
-                metadataView
-                
-                playerView
-            }
-            
-            
-            .onChange(of: currentMediaItem, initial: true) { old, new in
-                prepareNewMedia(from: new)
-            }
-            
-            
-            .onChange(of: isPlaying) { oldValue, isPlaying in
-                guard oldValue != isPlaying else { return }
-                
-                if isPlaying {
-                    player.play()
-                    
-                    UIApplication.shared.beginReceivingRemoteControlEvents()
-                }
-                else {
-                    player.pause()
-                }
-            }
+        VStack {
+            playerView
+            metadataView
         }
-        else {
-            ZStack {
-                metadataView
+        
+        
+        .onChange(of: currentMediaItem, initial: true) { old, new in
+            prepareNewMedia(from: new)
+        }
+        
+        
+        .onChange(of: isPlaying) { oldValue, isPlaying in
+            guard oldValue != isPlaying else { return }
+            
+            if isPlaying {
+                player.play()
                 
-                playerView
+                UIApplication.shared.beginReceivingRemoteControlEvents()
             }
-            
-            
-            .onChange(of: currentMediaItem) { newUrl in
-                defer { previousMediaItem = newUrl }
-                prepareNewMedia(from: newUrl)
-            }
-            
-            
-            .onChange(of: isPlaying) { isPlaying in
-                if isPlaying {
-                    player.play()
-                    
-                    UIApplication.shared.beginReceivingRemoteControlEvents()
-                }
-                else {
-                    player.pause()
-                }
+            else {
+                player.pause()
             }
         }
     }
@@ -182,13 +154,13 @@ private extension MediaPlayerView {
     
     var metadataView: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Spacer(minLength: 0)
-                .layoutPriority(1)
-            
-            Rectangle()
-                .fill(Color.clear)
-                .aspectRatio(16/9, contentMode: .fit)
-                .layoutPriority(1)
+//            Spacer(minLength: 0)
+//                .layoutPriority(1)
+//            
+//            Rectangle()
+//                .fill(Color.clear)
+//                .aspectRatio(16/9, contentMode: .fit)
+//                .layoutPriority(1)
             
             VStack(alignment: .leading, spacing: 0) {
                 Text(titleText)
@@ -215,7 +187,7 @@ private extension MediaPlayerView {
     
     
     var playerView: some View {
-        AVMediaPlayer(player: player, pipStatus: $pipStatus)
+        Player(player: player, pipStatus: $pipStatus)
             .aspectRatio(16/9, contentMode: .fit)
     }
 }
