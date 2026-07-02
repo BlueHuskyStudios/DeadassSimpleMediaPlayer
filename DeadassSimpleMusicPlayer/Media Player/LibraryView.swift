@@ -282,9 +282,7 @@ private extension LibraryView {
         .fileImporter(isPresented: $isImportingPlaylist, allowedContentTypes: [.json]) { result in
             switch result {
             case .success(let url):
-                Task {
-                    await importPlaylist(at: url)
-                }
+                importPlaylist(at: url)
                 
             case .failure(let error):
                 log(error: error)
@@ -315,18 +313,18 @@ private extension LibraryView {
     
     
     /// Reads a user-picked exported-JSON file (under its security scope) and hands it to the session to become a saved playlist
-    func importPlaylist(at url: URL) async {
-        await url.accessSecurityScopedResource { url in
+    func importPlaylist(at url: URL) {
+        url.accessSecurityScopedResource { url in
             do {
                 let data = try Data(contentsOf: url)
-                await session.importPlaylist(fromExportedJSON: data)
+                session.importPlaylist(fromExportedJSON: data)
             }
             catch {
                 log(error: "Couldn't read that playlist file: \(error)")
             }
         }
         onFailure: {
-            log(error: "I couldn't get the necessary permissions to read from this URL: \(url)")
+            _ = log(error: "I couldn't get the necessary permissions to read from this URL: \(url)")
         }
     }
     

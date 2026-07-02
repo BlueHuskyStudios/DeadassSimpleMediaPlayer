@@ -20,6 +20,7 @@ public extension URL {
     ///    - self: The URL that's safe to access
     ///   - onFailure: Called if the request to access the resource at this URL failed
     /// - Returns: Whatever the callbacks return
+    @discardableResult
     func accessSecurityScopedResource<Return>(_ accessor: (_ self: Self) -> Return, onFailure: () -> Return) -> Return {
         let didStart = startAccessingSecurityScopedResource()
         if didStart {
@@ -41,6 +42,7 @@ public extension URL {
     ///    - self: The URL that's safe to access
     ///   - onFailure: Called if the request to access the resource at this URL failed
     /// - Returns: Whatever the callbacks return
+    @discardableResult
     func accessSecurityScopedResource<Return>(_ accessor: (_ self: Self) async -> Return, onFailure: () async -> Return) async -> Return {
         let didStart = startAccessingSecurityScopedResource()
         if didStart {
