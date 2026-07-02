@@ -62,6 +62,9 @@ struct ContentView: View {
                         Task {
                             let newEntries = await Playlist.entries(fromUrl: openedUrl)
                             session.queue.append(contentsOf: newEntries)
+                            
+                            // A quiet background courtesy, after the music's already going: files sharing album metadata become an album playlist
+                            await session.autoGroupAlbums(from: newEntries)
                         }
                         
                     case .failure(let failure):

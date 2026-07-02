@@ -354,6 +354,69 @@ public extension PlayerSession {
     }
     
     
+    /// Imports a playlist previously exported as this app's raw JSON.
+    ///
+    /// The import receives a fresh identity, so importing can never silently overwrite an existing playlist that happens to share its ID (like re-importing your own export). Bookmark data survives the JSON round-trip, so on the same device an imported playlist's files usually resolve immediately.
+    @discardableResult
+    func importPlaylist(fromExportedJSON data: Data) -> SavedPlaylist? {
+        do {
+            var playlist = try JSONDecoder().decode(SavedPlaylist.self, from: data)
+            playlist.id = UUID()
+            
+            upsert(playlist)
+            return playlist
+        }
+        catch {
+            log(error: "Couldn't import that file as a playlist: \(error)")
+            return nil
+        }
+    }
+    
+    
+    /// Groups freshly-imported entries into album playlists, by their album metadata.
+    ///
+    /// Files sharing an album name — two or more of them, so a lone single isn't an "album" — become a `SavedPlaylist` of kind `.album` named after it, or merge into the existing one. Awaits each file's metadata search, so call this *after* the entries are already appended and playing; grouping is a quiet background courtesy, never a gate.
+    ///
+    /// Merging dedups by filename (bookmark data isn't byte-stable for the same file, so it can't be the identity here) — re-importing an album doesn't double its tracks. Track order is import order for now; sorting by track-number metadata is a future refinement.
+    func autoGroupAlbums(from entries: [PlaylistEntry]) async {
+        var albumNamesInImportOrder: [String] = []
+        var referencesByAlbum: [String: [MediaReference]] = [:]
+        
+        for entry in entries {
+            guard let metadata = entry.mediaItem?.metadata,
+                  let albumName = ((try? await metadata.get(.album)) ?? nil)?.nonEmptyOrNil
+            else { continue }
+            
+            if nil == referencesByAlbum[albumName] {
+                albumNamesInImportOrder.append(albumName)
+            }
+            
+            referencesByAlbum[albumName, default: []].append(entry.reference)
+        }
+        
+        for albumName in albumNamesInImportOrder {
+            guard let references = referencesByAlbum[albumName],
+                  references.count >= 2
+            else { continue }
+            
+            if var existingAlbum = savedPlaylists.first(where: { .album == $0.kind && albumName == $0.name }) {
+                let existingFilenames = Set(existingAlbum.items.map(\.filename))
+                let genuinelyNewItems = references.filter { !existingFilenames.contains($0.filename) }
+                
+                guard !genuinelyNewItems.isEmpty else { continue }
+                
+                existingAlbum.items.append(contentsOf: genuinelyNewItems)
+                upsert(existingAlbum)
+                log(info: "Merged \(genuinelyNewItems.count) new track(s) into the album “\(albumName)”")
+            }
+            else {
+                upsert(SavedPlaylist(name: albumName, kind: .album, items: references))
+                log(info: "Auto-grouped \(references.count) tracks into a new album: “\(albumName)”")
+            }
+        }
+    }
+    
+    
     /// Replaces the now-playing queue with the given saved playlist's contents, re-resolving every file.
     ///
     /// Files that can't be reached become unavailable slots (visible, skipped by playback) rather than vanishing — the playlist the user sees should be the playlist they saved.

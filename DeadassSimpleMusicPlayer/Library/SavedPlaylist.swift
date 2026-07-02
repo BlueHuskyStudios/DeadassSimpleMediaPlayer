@@ -78,4 +78,20 @@ public extension SavedPlaylist {
         
         return lines.joined(separator: "\n") + "\n"
     }
+    
+    
+    /// ``m3u8Text``, rendered to the bytes an exported file should contain
+    var exportedM3U8Data: Data {
+        Data(m3u8Text.utf8)
+    }
+    
+    
+    /// This playlist rendered as the app's native JSON — pretty-printed and key-sorted, same as on-disk storage, so exports are diffable against (and interchangeable with) what the app itself writes.
+    ///
+    /// Includes each item's bookmark data, so re-importing on the same device usually regains file access outright. On any other device the bookmarks are inert noise, and the M3U8 export is the better interchange format.
+    func exportedJSONData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(self)
+    }
 }

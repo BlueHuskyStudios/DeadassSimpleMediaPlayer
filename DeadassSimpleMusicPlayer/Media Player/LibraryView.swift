@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 import CollectionTools
 import SimpleLogging
@@ -32,6 +33,13 @@ struct LibraryView: View {
     
     @State
     private var newPlaylistName = ""
+    
+    @State
+    private var isImportingPlaylist = false
+    
+    /// A fully-prepared export awaiting the user's choice of destination; non-`nil` is what presents the exporter
+    @State
+    private var pendingExport: PendingExport? = nil
     
     
     var body: some View {
@@ -191,6 +199,12 @@ private extension LibraryView {
                     Label("Save Queue as Playlist…", systemImage: "plus")
                 }
                 .disabled(session.queue.entries.isEmpty)
+                
+                Button {
+                    isImportingPlaylist = true
+                } label: {
+                    Label("Import Playlist…", systemImage: "square.and.arrow.down")
+                }
             }
             
             if !session.savedPlaylists.isEmpty {
@@ -205,6 +219,20 @@ private extension LibraryView {
                             SavedPlaylistRow(playlist: playlist)
                         }
                         .buttonStyle(.plain)
+                        
+                        .contextMenu {
+                            Button {
+                                export(playlist, as: .m3uPlaylist)
+                            } label: {
+                                Label("Export as M3U8", systemImage: "square.and.arrow.up")
+                            }
+                            
+                            Button {
+                                export(playlist, as: .json)
+                            } label: {
+                                Label("Export as JSON", systemImage: "curlybraces")
+                            }
+                        }
                     }
                     .onDelete { offsets in
                         // IDs gathered before any removal, since each removal shifts the offsets they were gathered from
@@ -229,6 +257,86 @@ private extension LibraryView {
                 newPlaylistName = ""
             }
         }
+        
+        .fileExporter(
+            isPresented: Binding(
+                get: { nil != pendingExport },
+                set: { stillPresented in
+                    if !stillPresented {
+                        pendingExport = nil
+                    }
+                }),
+            document: pendingExport?.document,
+            contentType: pendingExport?.contentType ?? .json,
+            defaultFilename: pendingExport?.defaultFilename
+        ) { result in
+            switch result {
+            case .success(let url):
+                log(info: "Exported playlist to \(url)")
+                
+            case .failure(let error):
+                log(error: error)
+            }
+        }
+        
+        .fileImporter(isPresented: $isImportingPlaylist, allowedContentTypes: [.json]) { result in
+            switch result {
+            case .success(let url):
+                Task {
+                    await importPlaylist(at: url)
+                }
+                
+            case .failure(let error):
+                log(error: error)
+            }
+        }
+    }
+    
+    
+    /// Renders the playlist into the chosen format and stages it for the exporter sheet
+    func export(_ playlist: SavedPlaylist, as contentType: UTType) {
+        do {
+            let data: Data = if .json == contentType {
+                try playlist.exportedJSONData()
+            }
+            else {
+                playlist.exportedM3U8Data
+            }
+            
+            pendingExport = PendingExport(
+                document: ExportablePlaylistDocument(data: data),
+                contentType: contentType,
+                defaultFilename: playlist.name)
+        }
+        catch {
+            log(error: "Couldn't render “\(playlist.name)” for export: \(error)")
+        }
+    }
+    
+    
+    /// Reads a user-picked exported-JSON file (under its security scope) and hands it to the session to become a saved playlist
+    func importPlaylist(at url: URL) async {
+        await url.accessSecurityScopedResource { url in
+            do {
+                let data = try Data(contentsOf: url)
+                await session.importPlaylist(fromExportedJSON: data)
+            }
+            catch {
+                log(error: "Couldn't read that playlist file: \(error)")
+            }
+        }
+        onFailure: {
+            log(error: "I couldn't get the necessary permissions to read from this URL: \(url)")
+        }
+    }
+    
+    
+    
+    /// A fully-prepared export awaiting the user's choice of destination
+    struct PendingExport {
+        var document: ExportablePlaylistDocument
+        var contentType: UTType
+        var defaultFilename: String
     }
 }
 
