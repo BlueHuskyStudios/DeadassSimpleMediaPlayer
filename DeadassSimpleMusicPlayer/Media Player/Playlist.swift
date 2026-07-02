@@ -234,6 +234,19 @@ public extension Playlist {
         entries.removeAll { id == $0.id }
         playbackOrder?.removeAll { id == $0 }
     }
+    
+    
+    /// Reorders the *presented* order, using the offset semantics SwiftUI's `onMove(perform:)` supplies.
+    ///
+    /// Which order that is depends on shuffle state, matching what the user is looking at when they drag: un-shuffled, this rearranges the user-specified ``entries`` order (durable, saved into playlists); shuffled, it rearranges only the ephemeral ``playbackOrder`` — dragging rows around a shuffled queue never rewrites the order the user curated.
+    mutating func moveEntries(fromEffectiveOffsets source: IndexSet, toEffectiveOffset destination: Int) {
+        if nil != playbackOrder {
+            playbackOrder = playbackOrder.map { Self.moving(elements: $0, fromOffsets: source, toOffset: destination) }
+        }
+        else {
+            entries = Self.moving(elements: entries, fromOffsets: source, toOffset: destination)
+        }
+    }
 }
 
 
@@ -285,6 +298,34 @@ private extension Playlist {
         }
         
         playbackOrder = order
+    }
+    
+    
+    /// Reimplements the semantics of SwiftUI's `move(fromOffsets:toOffset:)` — which, despite its documentation living under the standard library, is actually only available by importing SwiftUI. Reimplementing ~10 lines keeps this model layer free of a UI-framework dependency.
+    ///
+    /// Semantics: the elements at `source` offsets move, as a block preserving their relative order, to sit before the element which was at `destination` — both interpreted in the *pre-move* collection, exactly as `onMove(perform:)` supplies them.
+    static func moving<Element>(elements: [Element], fromOffsets source: IndexSet, toOffset destination: Int) -> [Element] {
+        let moved = source.compactMap { elements.indices.contains($0) ? elements[$0] : nil }
+        
+        var remaining: [Element] = []
+        remaining.reserveCapacity(elements.count)
+        
+        var insertionIndex = destination
+        
+        for (offset, element) in elements.enumerated() {
+            if source.contains(offset) {
+                // Everything removed from before the destination shifts the insertion point down by one
+                if offset < destination {
+                    insertionIndex -= 1
+                }
+            }
+            else {
+                remaining.append(element)
+            }
+        }
+        
+        remaining.insert(contentsOf: moved, at: min(insertionIndex, remaining.count))
+        return remaining
     }
 }
 

@@ -19,6 +19,9 @@ struct ContentView: View {
     @State
     private var showFileBrowser = false
     
+    @State
+    private var showLibrary = false
+    
     /// Owns all durable playback state (the queue, modes, history, saved playlists) and its persistence
     @State
     private var session = PlayerSession()
@@ -30,7 +33,14 @@ struct ContentView: View {
             MediaPlayerView(currentPlaylist: $session.queue, session: session)
             
                 .toolbar {
-                    ToolbarItem {
+                    ToolbarItemGroup {
+                        Button {
+                            showLibrary = true
+                        } label: {
+                            Label("Library", systemImage: "music.note.list")
+                        }
+                        .labelStyle(.titleAndIcon)
+                        
                         Button {
                             showFileBrowser = true
                         } label: {
@@ -38,6 +48,11 @@ struct ContentView: View {
                         }
                         .labelStyle(.titleAndIcon)
                     }
+                }
+            
+            
+                .sheet(isPresented: $showLibrary) {
+                    LibraryView(session: session)
                 }
             
             

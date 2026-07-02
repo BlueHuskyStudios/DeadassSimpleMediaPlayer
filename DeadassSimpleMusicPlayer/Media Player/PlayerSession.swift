@@ -63,6 +63,10 @@ public final class PlayerSession {
     @ObservationIgnored
     private var historyRecordedEntryID: PlaylistEntry.ID? = nil
     
+    /// Whether whatever loads next should begin playing immediately. See ``requestPlaybackOnNextLoad()``.
+    @ObservationIgnored
+    private var pendingPlaybackIntent = false
+    
     @ObservationIgnored
     private var hasRestored = false
     
@@ -228,6 +232,57 @@ public extension PlayerSession {
 
 
 
+// MARK: - Playback intent
+
+public extension PlayerSession {
+    
+    /// Declares that whatever media loads next should begin playing immediately.
+    ///
+    /// "Change the current entry" and "load it into a player" are separated by a SwiftUI state round-trip, and the session doesn't own the player — so intent to keep playing is parked here by whoever changes the entry (queue advance on finish, tap-to-jump, loading a playlist) and claimed by whoever performs the load, via ``takePlaybackIntent()``.
+    func requestPlaybackOnNextLoad() {
+        pendingPlaybackIntent = true
+    }
+    
+    
+    /// Claims any pending intent to play. One-shot: claiming it clears it, so a load without intent stays paused.
+    func takePlaybackIntent() -> Bool {
+        defer { pendingPlaybackIntent = false }
+        return pendingPlaybackIntent
+    }
+    
+    
+    /// Jumps the queue to the given entry with intent to play it.
+    ///
+    /// No-ops for unplayable entries, and for the entry that's already current — the latter because no load would follow, which would strand the intent to be claimed by some unrelated later load.
+    func play(entryWithID id: PlaylistEntry.ID) {
+        guard id != queue.currentEntry?.id,
+              queue.entry(withID: id)?.isPlayable ?? false
+        else { return }
+        
+        requestPlaybackOnNextLoad()
+        queue.currentEntryID = id
+    }
+    
+    
+    /// Re-opens something from history: appends it to the queue (the queue is not disturbed beyond that) and plays it.
+    ///
+    /// A history entry is only a durable reference, so the file must be re-resolved — which can fail if it's moved or gone. Failure is logged and otherwise silent for now.
+    func replay(_ historyEntry: PlaybackHistory.Entry) async {
+        guard let item = await MediaItem(resolving: historyEntry.reference) else {
+            log(error: "Couldn't reopen “\(historyEntry.displayName)” from history — the file may have moved or been deleted")
+            return
+        }
+        
+        let entry = PlaylistEntry(item)
+        
+        requestPlaybackOnNextLoad()
+        queue.append(entry, allowMovingToNewItem: false)
+        queue.currentEntryID = entry.id
+    }
+}
+
+
+
 // MARK: - History management
 
 public extension PlayerSession {
@@ -302,12 +357,22 @@ public extension PlayerSession {
     /// Replaces the now-playing queue with the given saved playlist's contents, re-resolving every file.
     ///
     /// Files that can't be reached become unavailable slots (visible, skipped by playback) rather than vanishing — the playlist the user sees should be the playlist they saved.
-    func loadIntoQueue(_ playlist: SavedPlaylist) async {
+    ///
+    /// - Parameters:
+    ///   - playlist: The saved playlist to load
+    ///   - andPlay:  Whether loading should also start playing (the common reason anyone loads a playlist). Defaults to `true`.
+    func loadIntoQueue(_ playlist: SavedPlaylist, andPlay: Bool = true) async {
         var entries: [PlaylistEntry] = []
         entries.reserveCapacity(playlist.items.count)
         
         for reference in playlist.items {
             entries.append(await .resolving(reference))
+        }
+        
+        if andPlay,
+           entries.contains(where: \.isPlayable)
+        {
+            requestPlaybackOnNextLoad() // Before the queue assignment below, which is what triggers the load that claims this
         }
         
         queue = Playlist(entries: entries)

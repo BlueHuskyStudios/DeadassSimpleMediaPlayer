@@ -63,15 +63,13 @@ struct MediaPlayerView: View {
     @State
     private var itemEndSink: AnyCancellable? = nil
     
+    /// Waits for the current `AVPlayerItem` to become ready, so a restored playback position can be applied at a moment the item will actually honor it. Replaced whenever the item is; dropping the old sink is what unsubscribes it.
+    @State
+    private var itemReadinessSink: AnyCancellable? = nil
+    
     /// Opaque token for the player's periodic time observer, held only so registration happens exactly once
     @State
     private var periodicTimeObserverToken: Any? = nil
-    
-    /// Set when the queue advances during continuous playback, so the next item starts playing as soon as it loads — consumed by ``prepareNewMedia(from:)``.
-    ///
-    /// This exists because "advance the queue" and "load the new item" are separated by a SwiftUI state-change round-trip; the flag carries the intent to keep playing across that gap.
-    @State
-    private var shouldResumePlaybackAfterLoad = false
     
     
     // MARK: `View`
@@ -238,11 +236,11 @@ private extension MediaPlayerView {
         
         currentMediaMetadata = newItem?.metadata
         
-        let shouldResumePlayback = shouldResumePlaybackAfterLoad
-        shouldResumePlaybackAfterLoad = false
+        let shouldResumePlayback = session.takePlaybackIntent()
         
         guard let newItem else {
             itemEndSink = nil
+            itemReadinessSink = nil
             player.replaceCurrentItem(with: nil)
             UIApplication.shared.endReceivingRemoteControlEvents()
             return
@@ -262,9 +260,21 @@ private extension MediaPlayerView {
         player.replaceCurrentItem(with: playerItem)
         
         if let restoredSeconds = session.takePendingRestoredSeek(forEntryWithID: currentPlaylist.currentEntry?.id) {
-            player.seek(to: CMTime(seconds: restoredSeconds, preferredTimescale: 600))
+            // Seeks issued before an item reaches `.readyToPlay` can be ignored, clamped, or even outright rejected — so the restore seek waits until the item will actually honor it. (The item's status publisher emits the current value on subscription, so an already-ready item seeks immediately.)
+            let targetTime = CMTime(seconds: restoredSeconds, preferredTimescale: 600)
+            
+            itemReadinessSink = playerItem
+                .publisher(for: \.status)
+                .filter { .readyToPlay == $0 }
+                .map { _ in }
+                .first()
+                .receive(on: DispatchQueue.main)
+                .sink {
+                    player.seek(to: targetTime, toleranceBefore: .zero, toleranceAfter: .zero)
+                }
         }
         else {
+            itemReadinessSink = nil
             player.seek(to: .zero)
         }
         
@@ -293,7 +303,7 @@ private extension MediaPlayerView {
             
         case .wholeQueue:
             if nil != currentPlaylist.moveToNextEntry(wrapping: true) {
-                shouldResumePlaybackAfterLoad = true
+                session.requestPlaybackOnNextLoad()
             }
             else {
                 // Wrapping with nowhere else to go (the queue's only playable entry is this one) still means "start over"
@@ -302,7 +312,7 @@ private extension MediaPlayerView {
             
         case .off:
             if nil != currentPlaylist.moveToNextEntry(wrapping: false) {
-                shouldResumePlaybackAfterLoad = true
+                session.requestPlaybackOnNextLoad()
             }
             // Otherwise the queue is finished, and the player rests at the end of the final file
         }
