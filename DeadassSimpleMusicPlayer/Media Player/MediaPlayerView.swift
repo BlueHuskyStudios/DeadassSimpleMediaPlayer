@@ -28,6 +28,9 @@ struct MediaPlayerView: View {
     @Binding
     var currentPlaylist: Playlist
     
+    /// Owns playback policy & durable state: repeat behavior, play history, and session persistence. This view reports playback events to it and consults it for what finishing a file means.
+    let session: PlayerSession
+    
     @State
     var currentPlaylistItemIndex: Int = 0
     
@@ -56,6 +59,20 @@ struct MediaPlayerView: View {
     @State
     private var pipStatus = Player.PipStatus.undefined
     
+    /// Watches the current `AVPlayerItem` for playing to its end, so the queue can advance. Replaced whenever the item is; dropping the old sink is what unsubscribes it.
+    @State
+    private var itemEndSink: AnyCancellable? = nil
+    
+    /// Opaque token for the player's periodic time observer, held only so registration happens exactly once
+    @State
+    private var periodicTimeObserverToken: Any? = nil
+    
+    /// Set when the queue advances during continuous playback, so the next item starts playing as soon as it loads — consumed by ``prepareNewMedia(from:)``.
+    ///
+    /// This exists because "advance the queue" and "load the new item" are separated by a SwiftUI state-change round-trip; the flag carries the intent to keep playing across that gap.
+    @State
+    private var shouldResumePlaybackAfterLoad = false
+    
     
     // MARK: `View`
     
@@ -67,6 +84,22 @@ struct MediaPlayerView: View {
                 isPlaying = rate > 0
             }
             .store(in: &sinks)
+            
+            // One observer serves two jobs: reporting position (for session restore) and noticing when the history threshold is crossed. `onAppear` can fire more than once in a view's life, so registration is guarded to happen exactly once.
+            if nil == periodicTimeObserverToken {
+                periodicTimeObserverToken = player.addPeriodicTimeObserver(
+                    forInterval: CMTime(seconds: 0.5, preferredTimescale: 600),
+                    queue: .main
+                ) { [session] time in
+                    MainActor.assumeIsolated {
+                        session.notePlaybackPosition(seconds: time.seconds)
+                        
+                        if time.seconds >= PlayerSession.historyThresholdSeconds {
+                            session.recordCurrentEntryInHistoryIfNeeded()
+                        }
+                    }
+                }
+            }
             
             player.audiovisualBackgroundPlaybackPolicy = .continuesIfPossible
             
@@ -143,6 +176,9 @@ private extension MediaPlayerView {
             }
             else {
                 player.pause()
+                
+                // Pausing is a moment the user implicitly expects their place to be remembered
+                session.saveNowPlayingSnapshotNow()
             }
         }
     }
@@ -202,14 +238,35 @@ private extension MediaPlayerView {
         
         currentMediaMetadata = newItem?.metadata
         
+        let shouldResumePlayback = shouldResumePlaybackAfterLoad
+        shouldResumePlaybackAfterLoad = false
+        
         guard let newItem else {
+            itemEndSink = nil
             player.replaceCurrentItem(with: nil)
             UIApplication.shared.endReceivingRemoteControlEvents()
             return
         }
         
-        player.replaceCurrentItem(with: .init(newItem))
-        player.seek(to: .zero)
+        let playerItem = AVPlayerItem(newItem)
+        
+        // Subscribed per-item (with the item as the notification's object) so finishing can never be misattributed to whatever item happens to be current when the notification lands
+        itemEndSink = NotificationCenter.default
+            .publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: playerItem)
+            .map { _ in } // Reduced to Void before crossing queues: the payload isn't needed, and Void is trivially Sendable
+            .receive(on: DispatchQueue.main)
+            .sink {
+                currentItemDidFinishPlaying()
+            }
+        
+        player.replaceCurrentItem(with: playerItem)
+        
+        if let restoredSeconds = session.takePendingRestoredSeek(forEntryWithID: currentPlaylist.currentEntry?.id) {
+            player.seek(to: CMTime(seconds: restoredSeconds, preferredTimescale: 600))
+        }
+        else {
+            player.seek(to: .zero)
+        }
         
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback)
@@ -217,6 +274,44 @@ private extension MediaPlayerView {
         catch {
             log(error: error)
         }
+        
+        if shouldResumePlayback {
+            player.play()
+        }
+    }
+    
+    
+    /// The current file played all the way to its end; what happens next is the repeat mode's call.
+    ///
+    /// Also the safety net for the history threshold: a file too short to ever cross ``PlayerSession/historyThresholdSeconds`` earns its history place by finishing instead.
+    func currentItemDidFinishPlaying() {
+        session.recordCurrentEntryInHistoryIfNeeded()
+        
+        switch session.repeatMode {
+        case .currentItem:
+            replayCurrentItemFromStart()
+            
+        case .wholeQueue:
+            if nil != currentPlaylist.moveToNextEntry(wrapping: true) {
+                shouldResumePlaybackAfterLoad = true
+            }
+            else {
+                // Wrapping with nowhere else to go (the queue's only playable entry is this one) still means "start over"
+                replayCurrentItemFromStart()
+            }
+            
+        case .off:
+            if nil != currentPlaylist.moveToNextEntry(wrapping: false) {
+                shouldResumePlaybackAfterLoad = true
+            }
+            // Otherwise the queue is finished, and the player rests at the end of the final file
+        }
+    }
+    
+    
+    func replayCurrentItemFromStart() {
+        player.seek(to: .zero)
+        player.play()
     }
 }
 
@@ -296,7 +391,15 @@ private extension MediaPlayerView {
     func setupNowPlaying() {
         // Define Now Playing Info
         var nowPlayingInfo = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
-        nowPlayingInfo[MPMediaItemPropertyTitle] = metadata(.title)
+        
+        if let title = ((try? metadata(.title)?.value) ?? nil)
+            ?? currentMediaItem?.autoAccessSecurityScopedResourceUrl.deletingPathExtension().lastPathComponent.nonEmptyOrNil
+        {
+            nowPlayingInfo[MPMediaItemPropertyTitle] = title
+        }
+        else {
+            nowPlayingInfo.removeValue(forKey: MPMediaItemPropertyTitle)
+        }
 
         if let image = try? metadata(.image)?.value ?? nil { //??nil can't believe I still have to battle auto-double-optionals
             nowPlayingInfo[MPMediaItemPropertyArtwork] =
@@ -321,6 +424,6 @@ private extension MediaPlayerView {
 
 #Preview("Nothing playing") {
     NavigationStack {
-        MediaPlayerView(currentPlaylist: .constant(.empty))
+        MediaPlayerView(currentPlaylist: .constant(.empty), session: PlayerSession(persisting: false))
     }
 }

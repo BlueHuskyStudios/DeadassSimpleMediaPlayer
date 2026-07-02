@@ -13,15 +13,21 @@ import SimpleLogging
 
 struct ContentView: View {
     
+    @Environment(\.scenePhase)
+    private var scenePhase
+    
     @State
     private var showFileBrowser = false
     
+    /// Owns all durable playback state (the queue, modes, history, saved playlists) and its persistence
     @State
-    private var currentPlaylist: Playlist = .empty
+    private var session = PlayerSession()
     
     var body: some View {
+        @Bindable var session = session
+        
         NavigationStack {
-            MediaPlayerView(currentPlaylist: $currentPlaylist)
+            MediaPlayerView(currentPlaylist: $session.queue, session: session)
             
                 .toolbar {
                     ToolbarItem {
@@ -40,13 +46,26 @@ struct ContentView: View {
                     case .success(let openedUrl):
                         Task {
                             let newEntries = await Playlist.entries(fromUrl: openedUrl)
-                            currentPlaylist.append(contentsOf: newEntries)
+                            session.queue.append(contentsOf: newEntries)
                         }
                         
                     case .failure(let failure):
                         log(error: failure)
                     }
                 }
+        }
+        
+        
+        .task {
+            await session.restoreIfNeeded()
+        }
+        
+        
+        // Backgrounding is the canonical "the user might never come back" moment, so whatever's pending gets flushed here
+        .onChange(of: scenePhase) { _, newPhase in
+            if .active != newPhase {
+                session.saveNowPlayingSnapshotNow()
+            }
         }
     }
 }

@@ -22,7 +22,7 @@ public struct JSONDocumentStore: Sendable {
     
     /// Opens the store rooted at `Application Support/<subfolder>`, creating that folder if it doesn't yet exist.
     ///
-    /// - Parameter subfolder: Namespaces this store's documents apart from anything else in Application Support
+    /// - Parameter subfolder: Namespaces this store's documents apart from anything else in Application Support. May be a nested path (like `"Library/Playlists"`); intermediate folders are created as needed.
     /// - Throws: If Application Support can't be found or the subfolder can't be created — both of which mean persistence is impossible, so callers should treat this as "run without persistence", not "crash"
     public init(subfolder: String) throws {
         let applicationSupport = try FileManager.default.url(
@@ -31,7 +31,7 @@ public struct JSONDocumentStore: Sendable {
             appropriateFor: nil,
             create: true)
         
-        self.directory = applicationSupport.appending(component: subfolder, directoryHint: .isDirectory)
+        self.directory = applicationSupport.appending(path: subfolder, directoryHint: .isDirectory)
         
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
