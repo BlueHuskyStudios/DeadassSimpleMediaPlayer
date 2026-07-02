@@ -22,6 +22,12 @@ import SimpleLogging
 /// An all-in-one media player for SwiftUI
 struct MediaPlayerView: View {
     
+    @Environment(\.horizontalSizeClass)
+    private var horizontalSizeClass
+    
+    @Environment(\.verticalSizeClass)
+    private var verticalSizeClass
+    
     // MARK: API
     
     /// The URL pointing to the media currently being played
@@ -155,8 +161,21 @@ private extension MediaPlayerView {
     var baseBodyAndChangeReactions: some View {
         VStack {
             playerView
-            metadataView
+            
+            switch (width: horizontalSizeClass, height: verticalSizeClass) {
+            case (width: _, height: .none),
+                 (width: _, height: .regular):
+                metadataView
+                
+            case (width: _, height: .compact):
+                EmptyView()
+                    
+            @unknown default:
+                Text("Psst... tell Ky that the app needs updating")
+            }
         }
+        .background(Color(.systemGray6))
+        .background(ignoresSafeAreaEdges: .all)
         
         
         .onChange(of: currentMediaItem, initial: true) { old, new in
@@ -188,7 +207,7 @@ private extension MediaPlayerView {
 private extension MediaPlayerView {
     
     var metadataView: some View {
-        VStack(alignment: .leading, spacing: 0) {
+//        VStack(alignment: .leading, spacing: 0) {
 //            Spacer(minLength: 0)
 //                .layoutPriority(1)
 //            
@@ -202,28 +221,34 @@ private extension MediaPlayerView {
                     .font(.largeTitle.weight(.medium))
                     .foregroundStyle(.primary) // not strictly necessary, but I wanted to explicitly call out the relationship to the next Text down
                     .multilineTextAlignment(.leading)
-                    .lineLimit(2)
+                    .lineLimit(3)
                     .fixedSize(horizontal: false, vertical: true)
+//                    .border(.red)
                 
                 Text(creatorText)
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.leading)
                     .fixedSize()
+//                    .border(.red)
                 
                 Spacer(minLength: 0)
                     .layoutPriority(1)
             }
+            .frame(maxWidth: .infinity)
             .padding(.horizontal)
-            .layoutPriority(1)
-        }
-        .frame(maxWidth: .infinity)
+//            .layoutPriority(1)
+//        }
+//        .frame(maxWidth: .infinity)
+//        .border(.blue)
     }
     
     
     var playerView: some View {
         Player(player: player, pipStatus: $pipStatus)
             .aspectRatio(16/9, contentMode: .fit)
+            .frame(maxWidth: .infinity)
+            .layoutPriority(2)
     }
 }
 

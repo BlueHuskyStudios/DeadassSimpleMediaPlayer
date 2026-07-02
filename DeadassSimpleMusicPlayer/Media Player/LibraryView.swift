@@ -26,7 +26,7 @@ struct LibraryView: View {
     private var dismiss
     
     @State
-    private var tab = Tab.queue
+    private var tab = SelectedTab.queue
     
     @State
     private var isNamingNewPlaylist = false
@@ -44,28 +44,32 @@ struct LibraryView: View {
     
     var body: some View {
         NavigationStack {
-            Group {
-                switch tab {
-                case .queue:     queueTab
-                case .playlists: playlistsTab
-                case .history:   historyTab
+            TabView(selection: $tab) {
+                Tab(value: SelectedTab.queue) {
+                    queueTab
+                } label: {
+                    Label("Queue", systemImage: "list.bullet.below.rectangle")
+                }
+
+                Tab(value: SelectedTab.playlists) {
+                    playlistsTab
+                } label: {
+                    Label("Playlists", systemImage: "music.note.list")
+                }
+                
+                Tab(value: SelectedTab.history) {
+                    historyTab
+                } label: {
+                    Label("History", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
                 }
             }
             .navigationTitle("Library")
             .navigationBarTitleDisplayMode(.inline)
             
             .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Picker("Section", selection: $tab) {
-                        ForEach(Tab.allCases, id: \.self) { tab in
-                            Text(tab.title)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                }
                 
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
+                ToolbarItem(placement: .navigation) {
+                    Button("Done", systemImage: "xmark") {
                         dismiss()
                     }
                 }
@@ -76,7 +80,7 @@ struct LibraryView: View {
     
     
     /// The sheet's sections. All present from birth so new ones slot in without restructuring.
-    enum Tab: Hashable, CaseIterable {
+    enum SelectedTab: Hashable, CaseIterable {
         case queue
         case playlists
         case history
@@ -350,7 +354,8 @@ private extension LibraryView {
             ContentUnavailableView(
                 "Nothing played yet",
                 systemImage: "clock.arrow.circlepath",
-                description: Text("Whatever you play shows up here, so you can find your way back to it"))
+                description: Text("Go ahead and play something!\nI'll remember in case you want to replay it later.")
+            )
         }
         else {
             List {
@@ -361,13 +366,18 @@ private extension LibraryView {
                             dismiss()
                         }
                     } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(historyEntry.displayName)
-                                .lineLimit(1)
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(historyEntry.displayName)
+                                    .lineLimit(1)
+                                
+                                Text(historyEntry.playedAt, format: .relative(presentation: .named))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                             
-                            Text(historyEntry.playedAt, format: .relative(presentation: .named))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            Rectangle()
+                                .fill(Color(.systemGroupedBackground).opacity(0.001))
                         }
                     }
                     .buttonStyle(.plain)
