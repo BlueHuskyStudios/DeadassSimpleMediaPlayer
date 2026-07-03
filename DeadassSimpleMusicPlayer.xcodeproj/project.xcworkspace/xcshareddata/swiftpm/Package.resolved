@@ -1,5 +1,5 @@
 {
-  "originHash" : "3d9cdd1be6da5442658cd0e64f2285a68cb40d717fef18978b0570e8147c6676",
+  "originHash" : "9e0be2442c4e1419c83f3026bc23c8447d15951b878a5cbd62d2814d2630c037",
   "pins" : [
     {
       "identity" : "swift-async-algorithms",
@@ -60,8 +60,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/RougeWare/Swift-Function-Tools.git",
       "state" : {
-        "revision" : "0cc2083f05dc12fa70451985c0c3390e63b468ed",
-        "version" : "2.0.0"
+        "revision" : "ff75055b60271137f709963c4495613cb3d30587",
+        "version" : "2.0.1"
       }
     },
     {

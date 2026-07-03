@@ -209,39 +209,27 @@ private extension MediaPlayerView {
 private extension MediaPlayerView {
     
     var metadataView: some View {
-//        VStack(alignment: .leading, spacing: 0) {
-//            Spacer(minLength: 0)
-//                .layoutPriority(1)
-//            
-//            Rectangle()
-//                .fill(Color.clear)
-//                .aspectRatio(16/9, contentMode: .fit)
-//                .layoutPriority(1)
+        VStack(alignment: .leading, spacing: 0) {
+            Text(titleText)
+                .font(.largeTitle.weight(.medium))
+                .foregroundStyle(.primary) // not strictly necessary, but I wanted to explicitly call out the relationship to the next Text down
+                .multilineTextAlignment(.leading)
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
+//                .border(.red)
             
-            VStack(alignment: .leading, spacing: 0) {
-                Text(titleText)
-                    .font(.largeTitle.weight(.medium))
-                    .foregroundStyle(.primary) // not strictly necessary, but I wanted to explicitly call out the relationship to the next Text down
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(3)
-                    .fixedSize(horizontal: false, vertical: true)
-//                    .border(.red)
-                
-                Text(creatorText)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize()
-//                    .border(.red)
-                
-                Spacer(minLength: 0)
-                    .layoutPriority(1)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal)
-//            .layoutPriority(1)
-//        }
-//        .frame(maxWidth: .infinity)
+            Text(creatorText)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.leading)
+                .fixedSize()
+//                .border(.red)
+            
+            Spacer(minLength: 0)
+                .layoutPriority(1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal)
 //        .border(.blue)
     }
     
