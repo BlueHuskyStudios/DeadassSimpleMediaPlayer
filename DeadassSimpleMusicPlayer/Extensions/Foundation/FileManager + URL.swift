@@ -48,8 +48,9 @@ public extension FileManager {
         if let contentTypes,
            !contentTypes.isEmpty
         {
+            // `contentTypes` holds broad category types (.audiovisualContent, .directory, ...), while each file's own `.contentType` is a specific concrete type (.mp3, .mpeg4Audio, ...) — so this must check *conformance*, not exact Set membership. `Set.contains` would only ever match a file whose type happened to be identical to one of the category types themselves, which is effectively never.
             rootUrls = rootUrls
-                .filter { contentTypes.contains($0.contentType) }
+                .filter { url in contentTypes.contains { url.conforms(to: $0) } }
         }
         
         if recursive {

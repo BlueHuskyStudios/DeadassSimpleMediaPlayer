@@ -117,7 +117,20 @@ public struct AsyncMetadataKey<Value: Sendable>: Identifiable, Sendable {
     /// QuickTime user-specified track name vs ...).
     public let identifiers: [AVMetadataIdentifier]
 
-    public let retrievalApproach: AsyncMetadata.RetrievalApproach<Value> = .justLoadValue
+    /// How to pull `Value` out of a matched `AVMetadataItem`. Defaults to
+    /// ``AsyncMetadata/RetrievalApproach/justLoadValue``, which is correct
+    /// for values AVFoundation already hands back as `Value` (like
+    /// `String`). Keys whose underlying representation is `Data` — artwork,
+    /// chief among them — need ``AsyncMetadata/RetrievalApproach/loadDataValue(initializer:)``
+    /// instead.
+    public let retrievalApproach: AsyncMetadata.RetrievalApproach<Value>
+
+
+    public init(id: Id, identifiers: [AVMetadataIdentifier], retrievalApproach: AsyncMetadata.RetrievalApproach<Value> = .justLoadValue) {
+        self.id = id
+        self.identifiers = identifiers
+        self.retrievalApproach = retrievalApproach
+    }
 }
 
 
@@ -217,11 +230,14 @@ public extension AsyncMetadataKey where Value == String {
 public extension AsyncMetadataKey where Value == NativeImage? {
 
     /// The media's cover art (or thumbnail, or attached picture).
-    static let image = Self(id: "image", identifiers: [
-        .identifier3GPUserDataThumbnail,
-        .iTunesMetadataCoverArt,
-        .id3MetadataAttachedPicture,
-    ])
+    static let image = Self(
+        id: "image",
+        identifiers: [
+            .identifier3GPUserDataThumbnail,
+            .iTunesMetadataCoverArt,
+            .id3MetadataAttachedPicture,
+        ],
+        retrievalApproach: .loadDataValue { data in NativeImage(data: data) })
 }
 
 
@@ -372,16 +388,26 @@ private extension AsyncMetadata {
             return nil
         }
 
-        guard let rawValue = try await desiredMetadata.load(.value) else {
-            return nil
-        }
+        switch key.retrievalApproach {
+        case .justLoadValue:
+            guard let rawValue = try await desiredMetadata.load(.value) else {
+                return nil
+            }
 
-        guard let typedValue = rawValue as? Value else {
-            log(warning: "Raw value found, but was of type \(type(of: rawValue)), which couldn't be converted to \(Value.self)")
-            return nil
-        }
+            guard let typedValue = rawValue as? Value else {
+                log(warning: "Raw value found, but was of type \(type(of: rawValue)), which couldn't be converted to \(Value.self)")
+                return nil
+            }
 
-        return typedValue as any Sendable
+            return typedValue as any Sendable
+
+        case .loadDataValue(let initializer):
+            guard let data = try await desiredMetadata.load(.dataValue) else {
+                return nil
+            }
+
+            return initializer(data) as any Sendable
+        }
     }
 }
 

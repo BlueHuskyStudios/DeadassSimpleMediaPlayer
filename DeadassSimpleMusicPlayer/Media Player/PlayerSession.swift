@@ -440,7 +440,7 @@ public extension PlayerSession {
     
     /// Groups freshly-imported entries into album playlists, by their album metadata.
     ///
-    /// Files sharing an album name — two or more of them, so a lone single isn't an "album" — become a `SavedPlaylist` of kind `.album` named after it, or merge into the existing one. Awaits each file's metadata search, so call this *after* the entries are already appended and playing; grouping is a quiet background courtesy, never a gate.
+    /// Files sharing an album name become (or grow) a `SavedPlaylist` of kind `.album` named after it — even a single file, since imports frequently arrive one at a time (opening tracks individually, or one folder-import call per album versus many single-file calls) and grouping must be able to bootstrap from the first track rather than requiring two to already be in hand at once. Awaits each file's metadata search, so call this *after* the entries are already appended and playing; grouping is a quiet background courtesy, never a gate.
     ///
     /// Merging dedups by filename (bookmark data isn't byte-stable for the same file, so it can't be the identity here) — re-importing an album doesn't double its tracks. Track order is import order for now; sorting by track-number metadata is a future refinement.
     func autoGroupAlbums(from entries: [PlaylistEntry]) async {
@@ -460,9 +460,7 @@ public extension PlayerSession {
         }
         
         for albumName in albumNamesInImportOrder {
-            guard let references = referencesByAlbum[albumName],
-                  references.count >= 2
-            else { continue }
+            guard let references = referencesByAlbum[albumName] else { continue }
             
             if var existingAlbum = savedPlaylists.first(where: { .album == $0.kind && albumName == $0.name }) {
                 let existingFilenames = Set(existingAlbum.items.map(\.filename))
@@ -476,7 +474,7 @@ public extension PlayerSession {
             }
             else {
                 upsert(SavedPlaylist(name: albumName, kind: .album, items: references))
-                log(info: "Auto-grouped \(references.count) tracks into a new album: “\(albumName)”")
+                log(info: "Auto-grouped \(references.count) track(s) into a new album: “\(albumName)”")
             }
         }
     }
