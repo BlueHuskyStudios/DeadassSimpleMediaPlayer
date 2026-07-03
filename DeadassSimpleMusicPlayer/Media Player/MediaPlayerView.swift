@@ -164,16 +164,8 @@ private extension MediaPlayerView {
         VStack {
             playerView
             
-            switch (width: horizontalSizeClass, height: verticalSizeClass) {
-            case (width: _, height: .none),
-                 (width: _, height: .regular):
+            if !useFullscreenUi {
                 metadataView
-                
-            case (width: _, height: .compact):
-                EmptyView()
-                    
-            @unknown default:
-                Text("Psst... tell Ky that the app needs updating")
             }
         }
         .background(Color(.systemGray6))
@@ -199,6 +191,21 @@ private extension MediaPlayerView {
                 // Pausing is a moment the user implicitly expects their place to be remembered
                 session.saveNowPlayingSnapshotNow()
             }
+        }
+    }
+    
+    
+    private var useFullscreenUi: Bool {
+        switch (width: horizontalSizeClass, height: verticalSizeClass) {
+        case (width: _, height: .none),
+            (width: _, height: .regular):
+            false
+            
+        case (width: _, height: .compact):
+            true
+            
+        @unknown default:
+            false
         }
     }
 }
@@ -228,7 +235,7 @@ private extension MediaPlayerView {
             Spacer(minLength: 0)
                 .layoutPriority(1)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal)
 //        .border(.blue)
     }
@@ -239,6 +246,7 @@ private extension MediaPlayerView {
             .aspectRatio(16/9, contentMode: .fit)
             .frame(maxWidth: .infinity)
             .layoutPriority(2)
+            .ignoresSafeArea(.container, edges: useFullscreenUi ? .top : [])
     }
 }
 
