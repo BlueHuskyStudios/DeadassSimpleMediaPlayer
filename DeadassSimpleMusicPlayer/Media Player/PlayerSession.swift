@@ -163,6 +163,8 @@ public extension PlayerSession {
             pendingRestoredSeek = restoredQueue.currentEntry.flatMap { entry in
                 restoredPositionSeconds.map { (entryID: entry.id, seconds: $0) }
             }
+            
+            log(info: "Restored the previous session: \(restoredQueue.entries.count) queue entries, playback position \(restoredPositionSeconds.map { "\($0)s" } ?? "unknown")")
         }
         
         if let restoredRepeatMode {
@@ -188,7 +190,11 @@ public extension PlayerSession {
         guard let pending = pendingRestoredSeek else { return nil }
         pendingRestoredSeek = nil
         
-        guard pending.entryID == id else { return nil }
+        guard pending.entryID == id else {
+            log(info: "Discarding the restored playback position: it belonged to a different entry than the one now loading")
+            return nil
+        }
+        
         return pending.seconds
     }
 }
@@ -370,6 +376,59 @@ public extension PlayerSession {
             log(error: "Couldn't import that file as a playlist: \(error)")
             return nil
         }
+    }
+    
+    
+    /// Imports an M3U/M3U8 playlist, best-effort.
+    ///
+    /// Sandboxing means bare filenames can't grant access to files this app has never been handed — so each entry is matched, by filename, against every file the app *already* knows (saved playlists, the queue, play history). Matches become the imported playlist; strangers are counted and skipped, with the outcome logged. Perfect-someday: prompting the user to locate unmatched files.
+    ///
+    /// - Parameters:
+    ///   - data:          The playlist file's contents
+    ///   - suggestedName: What to call the import — typically the file's own name
+    @discardableResult
+    func importPlaylist(fromM3U8 data: Data, suggestedName: String) -> SavedPlaylist? {
+        guard let text = String(data: data, encoding: .utf8) else {
+            log(error: "That M3U8 file isn't UTF-8 text, so I can't read it")
+            return nil
+        }
+        
+        // The M3U format: one entry per line; lines starting with # are directives/comments, everything else names media
+        let entryLines = text
+            .split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty && !$0.hasPrefix("#") }
+        
+        guard !entryLines.isEmpty else {
+            log(error: "No entries found in that M3U8 file")
+            return nil
+        }
+        
+        let knownReferences = allKnownReferencesByFilename()
+        
+        let matchedItems = entryLines.compactMap { line -> MediaReference? in
+            // Tolerate other apps' path-style entries by matching on just the final component
+            let bareFilename = line
+                .split(whereSeparator: { "/" == $0 || "\\" == $0 })
+                .last
+                .map(String.init)
+                ?? line
+            
+            return knownReferences[bareFilename]
+        }
+        
+        guard !matchedItems.isEmpty else {
+            log(error: "None of the \(entryLines.count) entries in that M3U8 matched a file this app has been granted access to, so there's nothing to import. (An M3U8 can only re-assemble files you've already opened here.)")
+            return nil
+        }
+        
+        if matchedItems.count < entryLines.count {
+            log(warning: "Imported \(matchedItems.count) of \(entryLines.count) M3U8 entries; the rest named files this app has never been granted access to")
+        }
+        
+        let playlist = SavedPlaylist(name: suggestedName, items: matchedItems)
+        upsert(playlist)
+        return playlist
     }
     
     
@@ -559,5 +618,23 @@ private extension PlayerSession {
         }
         
         return entry.reference.displayName
+    }
+    
+    
+    /// Every file this app knows a durable way back to, indexed by filename — the matching pool for best-effort M3U8 import.
+    ///
+    /// Later sources win filename collisions, ordered so the freshest wins: history, then saved playlists, then the live queue.
+    func allKnownReferencesByFilename() -> [String: MediaReference] {
+        var known: [String: MediaReference] = [:]
+        
+        let allReferences = history.entries.map(\.reference)
+            + savedPlaylists.flatMap(\.items)
+            + queue.entries.map(\.reference)
+        
+        for reference in allReferences {
+            known[reference.filename] = reference
+        }
+        
+        return known
     }
 }

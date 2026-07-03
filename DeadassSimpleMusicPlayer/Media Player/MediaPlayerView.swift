@@ -69,9 +69,11 @@ struct MediaPlayerView: View {
     @State
     private var itemEndSink: AnyCancellable? = nil
     
-    /// Waits for the current `AVPlayerItem` to become ready, so a restored playback position can be applied at a moment the item will actually honor it. Replaced whenever the item is; dropping the old sink is what unsubscribes it.
+    /// Waits for the current `AVPlayerItem` to become ready, so a restored playback position can be applied at a moment the item will actually honor it (seeks issued earlier are ignored or rejected outright).
+    ///
+    /// Direct KVO rather than Combine's KVO publisher: this is the canonical, battle-tested readiness pattern, chosen after the publisher approach failed to restore positions in practice. Must be retained for its lifetime; invalidated & replaced whenever the item is.
     @State
-    private var itemReadinessSink: AnyCancellable? = nil
+    private var itemReadinessObservation: NSKeyValueObservation? = nil
     
     /// Opaque token for the player's periodic time observer, held only so registration happens exactly once
     @State
@@ -265,7 +267,8 @@ private extension MediaPlayerView {
         
         guard let newItem else {
             itemEndSink = nil
-            itemReadinessSink = nil
+            itemReadinessObservation?.invalidate()
+            itemReadinessObservation = nil
             player.replaceCurrentItem(with: nil)
             UIApplication.shared.endReceivingRemoteControlEvents()
             return
@@ -284,22 +287,25 @@ private extension MediaPlayerView {
         
         player.replaceCurrentItem(with: playerItem)
         
+        itemReadinessObservation?.invalidate()
+        itemReadinessObservation = nil
+        
         if let restoredSeconds = session.takePendingRestoredSeek(forEntryWithID: currentPlaylist.currentEntry?.id) {
-            // Seeks issued before an item reaches `.readyToPlay` can be ignored, clamped, or even outright rejected — so the restore seek waits until the item will actually honor it. (The item's status publisher emits the current value on subscription, so an already-ready item seeks immediately.)
+            log(info: "Holding a restored playback position of \(restoredSeconds)s until the item becomes ready")
+            
             let targetTime = CMTime(seconds: restoredSeconds, preferredTimescale: 600)
             
-            itemReadinessSink = playerItem
-                .publisher(for: \.status)
-                .filter { .readyToPlay == $0 }
-                .map { _ in }
-                .first()
-                .receive(on: DispatchQueue.main)
-                .sink {
-                    player.seek(to: targetTime, toleranceBefore: .zero, toleranceAfter: .zero)
+            itemReadinessObservation = playerItem.observe(\.status, options: [.initial, .new]) { item, _ in
+                guard .readyToPlay == item.status else { return }
+                
+                Task { @MainActor in
+                    log(info: "Item is ready; applying the restored playback position")
+                    let seekFinished = await player.seek(to: targetTime, toleranceBefore: .zero, toleranceAfter: .zero)
+                    log(info: "Restored-position seek \(seekFinished ? "completed" : "was interrupted by another seek")")
                 }
+            }
         }
         else {
-            itemReadinessSink = nil
             player.seek(to: .zero)
         }
         

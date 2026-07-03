@@ -283,7 +283,7 @@ private extension LibraryView {
             }
         }
         
-        .fileImporter(isPresented: $isImportingPlaylist, allowedContentTypes: [.json]) { result in
+        .fileImporter(isPresented: $isImportingPlaylist, allowedContentTypes: [.json, .m3uPlaylist]) { result in
             switch result {
             case .success(let url):
                 importPlaylist(at: url)
@@ -316,12 +316,18 @@ private extension LibraryView {
     }
     
     
-    /// Reads a user-picked exported-JSON file (under its security scope) and hands it to the session to become a saved playlist
+    /// Reads a user-picked playlist file (under its security scope) and hands it to the session, routed by format: our JSON round-trips faithfully; M3U8 is a best-effort filename-match against files the app already knows
     func importPlaylist(at url: URL) {
         url.accessSecurityScopedResource { url in
             do {
                 let data = try Data(contentsOf: url)
-                session.importPlaylist(fromExportedJSON: data)
+                
+                if "json" == url.pathExtension.lowercased() {
+                    session.importPlaylist(fromExportedJSON: data)
+                }
+                else {
+                    session.importPlaylist(fromM3U8: data, suggestedName: url.deletingPathExtension().lastPathComponent)
+                }
             }
             catch {
                 log(error: "Couldn't read that playlist file: \(error)")
@@ -385,9 +391,72 @@ private extension LibraryView {
             }
             
             .toolbar {
-                ToolbarItem(placement: .bottomBar) {
+                ToolbarItemGroup(placement: .bottomBar) {
+                    retentionMenu
+                    
+                    Spacer()
+                    
                     ClearHistoryButton(session: session)
                 }
+            }
+        }
+    }
+    
+    
+    /// Chooses how far back history is kept. Tightening the window prunes immediately.
+    var retentionMenu: some View {
+        Menu {
+            Picker("Keep History", selection: Binding(
+                get: { session.history.retention },
+                set: { session.setHistoryRetention($0) })
+            ) {
+                ForEach(RetentionPreset.allCases, id: \.self) { preset in
+                    Text(preset.title)
+                        .tag(preset.retention)
+                }
+            }
+        } label: {
+            Label(currentRetentionTitle, systemImage: "clock.arrow.circlepath")
+        }
+    }
+    
+    
+    var currentRetentionTitle: LocalizedStringKey {
+        RetentionPreset.allCases
+            .first { $0.retention == session.history.retention }?
+            .title
+            ?? "Custom"
+    }
+    
+    
+    
+    /// The retention choices offered in UI — friendly names over the model's raw dials
+    enum RetentionPreset: CaseIterable {
+        case forever
+        case pastDay
+        case pastWeek
+        case pastYear
+        case hundredMostRecent
+        
+        
+        var retention: PlaybackHistory.Retention {
+            switch self {
+            case .forever:           .forever
+            case .pastDay:           .within(days: 1)
+            case .pastWeek:          .within(days: 7)
+            case .pastYear:          .within(days: 365)
+            case .hundredMostRecent: .mostRecent(count: 100)
+            }
+        }
+        
+        
+        var title: LocalizedStringKey {
+            switch self {
+            case .forever:           "Keep Forever"
+            case .pastDay:           "Keep Past Day"
+            case .pastWeek:          "Keep Past Week"
+            case .pastYear:          "Keep Past Year"
+            case .hundredMostRecent: "Keep 100 Most Recent"
             }
         }
     }
