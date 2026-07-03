@@ -25,28 +25,31 @@ public final actor MediaItem: Sendable {
     
     public let autoAccessSecurityScopedResourceUrl: URL
     
+    /// Whether this instance is the one that started (and must stop) the security scope, versus inheriting it from an already-active parent scope. See ``init(url:)``.
+    private let ownsSecurityScope: Bool
+    
     public let metadata: AsyncMetadata?
     
     
-    /// Creates a live item from a URL freshly granted by the system file picker.
+    /// Creates a live item from a URL freshly granted by the system file picker — or from a URL enumerated as a child of a folder whose own security scope is already active.
     ///
-    /// Fails if the security scope can't be entered, or if the system can't create a bookmark for the file. Bookmark failure is treated as item failure on purpose: it preserves the invariant that every live item is persistable, which keeps every layer above this one simpler than "persistable, usually".
+    /// Only the *top-level* URL the system hands you (from a picker, or a resolved bookmark) is independently security-scoped; calling `startAccessingSecurityScopedResource()` on a child URL discovered via `contentsOfDirectory` legitimately returns `false` even though the file is perfectly readable under its parent's still-active scope. So `false` here isn't treated as failure — only as "this instance doesn't own its own scope token, so it won't call the matching stop." The real test of access is what happens next: creating a bookmark, which requires the file to actually be reachable.
     init?(url: URL) async {
-        guard url.startAccessingSecurityScopedResource() else {
-            log(error: "Failed to access the media item as a security-scoped resource: \(url)")
-            return nil
-        }
+        let didStartOwnSecurityScope = url.startAccessingSecurityScopedResource()
         
         do {
             self.reference = try MediaReference(bookmarking: url)
         }
         catch {
             log(error: error)
-            url.stopAccessingSecurityScopedResource()
+            if didStartOwnSecurityScope {
+                url.stopAccessingSecurityScopedResource()
+            }
             return nil
         }
         
         self.autoAccessSecurityScopedResourceUrl = url
+        self.ownsSecurityScope = didStartOwnSecurityScope
         self.metadata = await Self.extractMetadata(from: url)
     }
     
@@ -80,11 +83,13 @@ public final actor MediaItem: Sendable {
         
         self.reference = bestReference
         self.autoAccessSecurityScopedResourceUrl = url
+        self.ownsSecurityScope = true
         self.metadata = await Self.extractMetadata(from: url)
     }
     
     
     deinit {
+        guard ownsSecurityScope else { return }
         autoAccessSecurityScopedResourceUrl.stopAccessingSecurityScopedResource()
     }
     

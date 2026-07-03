@@ -79,6 +79,14 @@ struct MediaPlayerView: View {
     @State
     private var periodicTimeObserverToken: Any? = nil
     
+    /// Album art to show where video would appear. Only ever non-`nil` for media with no video track of its own.
+    @State
+    private var currentArtwork: UIImage? = nil
+    
+    /// Whether the current item brings its own video. Assumed `true` until the track inspection proves otherwise, so artwork can never flash over the opening frames of a real video.
+    @State
+    private var currentItemHasVideoTrack = true
+    
     
     // MARK: `View`
     
@@ -134,6 +142,7 @@ struct MediaPlayerView: View {
         
         .onReceive(currentMediaMetadata?.onMetadataDidUpdate()) { _ in
             setupNowPlaying()
+            refreshArtwork()
             log(info: "Metadata updated")
         }
         
@@ -242,11 +251,10 @@ private extension MediaPlayerView {
     
     
     var playerView: some View {
-        Player(player: player, pipStatus: $pipStatus)
+        Player(player: player, artwork: currentArtwork, pipStatus: $pipStatus)
             .aspectRatio(16/9, contentMode: .fit)
             .frame(maxWidth: .infinity)
             .layoutPriority(2)
-            .ignoresSafeArea(.container, edges: useFullscreenUi ? .top : [])
     }
 }
 
@@ -255,9 +263,23 @@ private extension MediaPlayerView {
 // MARK: - Responding to the uesr
 
 private extension MediaPlayerView {
+    
+    /// Pulls the current media's artwork out of its metadata — but only for media with no video of its own; video always wins the screen
+    func refreshArtwork() {
+        guard !currentItemHasVideoTrack else {
+            currentArtwork = nil
+            return
+        }
+        
+        currentArtwork = (try? metadata(.image)?.value) ?? nil
+    }
+    
+    
     func prepareNewMedia(from newItem: MediaItem?) {
         
         currentMediaMetadata = newItem?.metadata
+        currentArtwork = nil
+        currentItemHasVideoTrack = true
         
         let shouldResumePlayback = session.takePlaybackIntent()
         
@@ -271,6 +293,16 @@ private extension MediaPlayerView {
         }
         
         let playerItem = AVPlayerItem(newItem)
+        
+        // Album art belongs only where video doesn't: inspect the asset's tracks, and only then let artwork through
+        Task {
+            let videoTracks = (try? await playerItem.asset.loadTracks(withMediaType: .video)) ?? []
+            
+            guard playerItem === player.currentItem else { return } // The queue may have moved on while we were inspecting
+            
+            currentItemHasVideoTrack = !videoTracks.isEmpty
+            refreshArtwork()
+        }
         
         // Subscribed per-item (with the item as the notification's object) so finishing can never be misattributed to whatever item happens to be current when the notification lands
         itemEndSink = NotificationCenter.default

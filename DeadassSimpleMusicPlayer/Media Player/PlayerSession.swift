@@ -270,6 +270,12 @@ public extension PlayerSession {
     }
     
     
+    /// Empties the now-playing queue entirely. Playback stops as a natural consequence: the player-owning view reacts to the current entry vanishing. Saved playlists and history are untouched.
+    func clearQueue() {
+        queue = .empty
+    }
+    
+    
     /// Re-opens something from history: appends it to the queue (the queue is not disturbed beyond that) and plays it.
     ///
     /// A history entry is only a durable reference, so the file must be re-resolved — which can fail if it's moved or gone. Failure is logged and otherwise silent for now.

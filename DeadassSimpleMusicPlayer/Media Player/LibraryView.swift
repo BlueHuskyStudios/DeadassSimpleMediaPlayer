@@ -57,6 +57,12 @@ struct LibraryView: View {
                     Label("Playlists", systemImage: "music.note.list")
                 }
                 
+                Tab(value: SelectedTab.albums) {
+                    albumsTab
+                } label: {
+                    Label("Albums", systemImage: "opticaldisc")
+                }
+                
                 Tab(value: SelectedTab.history) {
                     historyTab
                 } label: {
@@ -83,12 +89,14 @@ struct LibraryView: View {
     enum SelectedTab: Hashable, CaseIterable {
         case queue
         case playlists
+        case albums
         case history
         
         var title: LocalizedStringKey {
             switch self {
             case .queue:     "Queue"
             case .playlists: "Playlists"
+            case .albums:    "Albums"
             case .history:   "History"
             }
         }
@@ -145,6 +153,10 @@ private extension LibraryView {
                     Spacer()
                     
                     repeatModeMenu
+                    
+                    Spacer()
+                    
+                    ClearQueueButton(session: session)
                     
                     Spacer()
                     
@@ -211,40 +223,11 @@ private extension LibraryView {
                 }
             }
             
-            if !session.savedPlaylists.isEmpty {
+            let userPlaylists = session.savedPlaylists.filter { .userCreated == $0.kind }
+            
+            if !userPlaylists.isEmpty {
                 Section("Saved") {
-                    ForEach(session.savedPlaylists) { playlist in
-                        Button {
-                            Task {
-                                await session.loadIntoQueue(playlist)
-                                dismiss() // Their goal (play that playlist) is accomplished; get out of the way
-                            }
-                        } label: {
-                            SavedPlaylistRow(playlist: playlist)
-                        }
-                        .buttonStyle(.plain)
-                        
-                        .contextMenu {
-                            Button {
-                                export(playlist, as: .m3uPlaylist)
-                            } label: {
-                                Label("Export as M3U8", systemImage: "square.and.arrow.up")
-                            }
-                            
-                            Button {
-                                export(playlist, as: .json)
-                            } label: {
-                                Label("Export as JSON", systemImage: "curlybraces")
-                            }
-                        }
-                    }
-                    .onDelete { offsets in
-                        // IDs gathered before any removal, since each removal shifts the offsets they were gathered from
-                        let ids = offsets.map { session.savedPlaylists[$0].id }
-                        for id in ids {
-                            session.delete(playlistWithID: id)
-                        }
-                    }
+                    savedPlaylistRows(userPlaylists)
                 }
             }
         }
@@ -290,6 +273,46 @@ private extension LibraryView {
                 
             case .failure(let error):
                 log(error: error)
+            }
+        }
+    }
+    
+    
+    /// One tappable/exportable/deletable row per given playlist. Shared between the Playlists and Albums tabs so the two never drift apart in behavior.
+    ///
+    /// Deletion maps offsets within the *given* (possibly filtered) list — never within `session.savedPlaylists` directly — so filtering can't misdirect a delete.
+    @ViewBuilder
+    func savedPlaylistRows(_ playlists: [SavedPlaylist]) -> some View {
+        ForEach(playlists) { playlist in
+            Button {
+                Task {
+                    await session.loadIntoQueue(playlist)
+                    dismiss() // Their goal (play that playlist) is accomplished; get out of the way
+                }
+            } label: {
+                SavedPlaylistRow(playlist: playlist)
+            }
+            .buttonStyle(.plain)
+            
+            .contextMenu {
+                Button {
+                    export(playlist, as: .m3uPlaylist)
+                } label: {
+                    Label("Export as M3U8", systemImage: "square.and.arrow.up")
+                }
+                
+                Button {
+                    export(playlist, as: .json)
+                } label: {
+                    Label("Export as JSON", systemImage: "curlybraces")
+                }
+            }
+        }
+        .onDelete { offsets in
+            // IDs gathered before any removal, since each removal shifts the offsets they were gathered from
+            let ids = offsets.map { playlists[$0].id }
+            for id in ids {
+                session.delete(playlistWithID: id)
             }
         }
     }
@@ -345,6 +368,30 @@ private extension LibraryView {
         var document: ExportablePlaylistDocument
         var contentType: UTType
         var defaultFilename: String
+    }
+}
+
+
+
+// MARK: - Albums tab
+
+private extension LibraryView {
+    
+    @ViewBuilder
+    var albumsTab: some View {
+        let albums = session.savedPlaylists.filter { .album == $0.kind }
+        
+        if albums.isEmpty {
+            ContentUnavailableView(
+                "No albums yet",
+                systemImage: "opticaldisc",
+                description: Text("Open files that share album metadata, and they'll gather here on their own"))
+        }
+        else {
+            List {
+                savedPlaylistRows(albums)
+            }
+        }
     }
 }
 
@@ -458,6 +505,34 @@ private extension LibraryView {
             case .pastYear:          "Keep Past Year"
             case .hundredMostRecent: "Keep 100 Most Recent"
             }
+        }
+    }
+}
+
+
+
+/// The confirmation-gated "Clear Queue" control, in its own type so its dialog state stays local.
+///
+/// Icon-only in the bar (the queue toolbar is crowded), destructive-tinted, and always one confirmation away from emptying the queue — clearing is cheap to redo, but never so cheap it happens by accident.
+private struct ClearQueueButton: View {
+    
+    let session: PlayerSession
+    
+    @State
+    private var isConfirming = false
+    
+    
+    var body: some View {
+        Button("Clear Queue", systemImage: "trash", role: .destructive) {
+            isConfirming = true
+        }
+        .labelStyle(.iconOnly)
+        .confirmationDialog("Clear the queue?", isPresented: $isConfirming, titleVisibility: .visible) {
+            Button("Clear Queue", role: .destructive) {
+                session.clearQueue()
+            }
+        } message: {
+            Text("This stops playback and empties the queue. Saved playlists and history aren't affected.")
         }
     }
 }
