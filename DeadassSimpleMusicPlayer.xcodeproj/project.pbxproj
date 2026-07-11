@@ -15,10 +15,13 @@
 		092A407B2FF5C8D900B05BB3 /* RepeatMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092A40752FF5C8D900B05BB3 /* RepeatMode.swift */; };
 		092A408C2FF5D6B600B05BB3 /* CollectionTools in Frameworks */ = {isa = PBXBuildFile; productRef = 092A408B2FF5D6B600B05BB3 /* CollectionTools */; };
 		092B44D12FE695D8004EE1B5 /* ConcurrencyTools in Frameworks */ = {isa = PBXBuildFile; productRef = 092B44D02FE695D8004EE1B5 /* ConcurrencyTools */; };
+		0947B83E3002363600A5F26F /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 0947B83D3002363600A5F26F /* README.md */; };
+		0947B8403002365100A5F26F /* LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 0947B83F3002365100A5F26F /* LICENSE.txt */; };
 		0971EAA32FF6699B00B4E263 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0971EAA22FF6699B00B4E263 /* LibraryView.swift */; };
 		0971EAA42FF6699B00B4E263 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0971EAA22FF6699B00B4E263 /* LibraryView.swift */; };
 		0988E1192FEA0A8400A4E9BA /* AsyncAlgorithms in Frameworks */ = {isa = PBXBuildFile; productRef = 0988E1182FEA0A8400A4E9BA /* AsyncAlgorithms */; };
 		0988E11B2FEA0A8400A4E9BA /* AsyncStreaming in Frameworks */ = {isa = PBXBuildFile; productRef = 0988E11A2FEA0A8400A4E9BA /* AsyncStreaming */; };
+		09E57B213002336700B235A6 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 09E57B203002336700B235A6 /* AppIcon.icon */; };
 		09F9747A2FEBA2F1001028C0 /* NotFound.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09F974792FEBA2F1001028C0 /* NotFound.swift */; };
 		09F9747B2FEBA2F1001028C0 /* NotFound.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09F974792FEBA2F1001028C0 /* NotFound.swift */; };
 		09FA86152FF62AD3004B2D7A /* PlayerSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09FA86142FF62AD3004B2D7A /* PlayerSession.swift */; };
@@ -71,7 +74,10 @@
 		092A40732FF5C8D900B05BB3 /* MediaReference.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaReference.swift; sourceTree = "<group>"; };
 		092A40742FF5C8D900B05BB3 /* PlaylistEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistEntry.swift; sourceTree = "<group>"; };
 		092A40752FF5C8D900B05BB3 /* RepeatMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepeatMode.swift; sourceTree = "<group>"; };
+		0947B83D3002363600A5F26F /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		0947B83F3002365100A5F26F /* LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE.txt; sourceTree = "<group>"; };
 		0971EAA22FF6699B00B4E263 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
+		09E57B203002336700B235A6 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		09F974792FEBA2F1001028C0 /* NotFound.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotFound.swift; sourceTree = "<group>"; };
 		09FA86142FF62AD3004B2D7A /* PlayerSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSession.swift; sourceTree = "<group>"; };
 		B955C4582C43894900637C85 /* Playlist.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Playlist.swift; sourceTree = "<group>"; };
@@ -185,6 +191,9 @@
 		B9B6F0CF2C1511390093BAED = {
 			isa = PBXGroup;
 			children = (
+				0947B83F3002365100A5F26F /* LICENSE.txt */,
+				0947B83D3002363600A5F26F /* README.md */,
+				09E57B203002336700B235A6 /* AppIcon.icon */,
 				B9B6F0DA2C1511390093BAED /* DeadassSimpleMusicPlayer */,
 				B9B6F0D92C1511390093BAED /* Products */,
 				B9B940AF2C3C527C00E54F32 /* Frameworks */,
@@ -383,6 +392,9 @@
 			files = (
 				B9B6F0E42C15113C0093BAED /* Preview Assets.xcassets in Resources */,
 				B9B6F0E02C15113C0093BAED /* Assets.xcassets in Resources */,
+				0947B83E3002363600A5F26F /* README.md in Resources */,
+				0947B8403002365100A5F26F /* LICENSE.txt in Resources */,
+				09E57B213002336700B235A6 /* AppIcon.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
