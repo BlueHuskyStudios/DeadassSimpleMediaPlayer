@@ -73,7 +73,7 @@ public extension PlaylistEntry {
     /// Builds a slot by attempting to resolve a persisted reference.
     ///
     /// Never fails: an unresolvable file becomes an ``State/unavailable`` slot instead of vanishing. Pass the slot's persisted `id` so pointers into the queue (current item, shuffle order) remain valid across the restore.
-    static func resolving(id: UUID = UUID(), _ reference: MediaReference) async -> Self {
+    static func resolving(_ reference: MediaReference, id: UUID = UUID()) async -> Self {
         if let item = await MediaItem(resolving: reference) {
             Self(id: id, reference: item.reference, state: .ready(item))
         }

@@ -40,24 +40,24 @@ public final class AsyncMetadata: @unchecked Sendable {
     // binding, with the loser orphaned but producing no incorrect result.
     // Fixing this would require a mutex around the insert; see the closing
     // comment in `lazySearch(for:)`.
-
+    
     /// Aids in determining if an `AsyncMetadata` is unique amongst others.
     private let id = UUID()
-
+    
     /// The metadata retrieved from the asset at creation time. Immutable for
     /// the lifetime of this instance; per-value extraction is deferred.
     private let assetMetadata: [AVMetadataItem]
-
+    
     /// Per-key lazy searches. Each entry encapsulates its own loading state
     /// (`.notStarted` / `.loading` / `.success` / `.failure`) and caches the
     /// outcome forever after first resolution.
     private var __cache: [AsyncMetadataKeyId: CachedSearch] = [:]
-
+    
     /// Republishes a `Void` whenever any cached search transitions into a
     /// terminal state. Backs the public ``onMetadataDidUpdate()`` contract.
     private let metadataUpdatePublisher = PassthroughSubject<Void, Never>()
-
-
+    
+    
     /// Creates an `AsyncMetadata` by loading the top-level metadata array
     /// from `asset`.
     ///
@@ -83,8 +83,7 @@ public extension AsyncMetadata {
 // MARK: - Observation
 
 public extension AsyncMetadata {
-    /// Every time this instance concludes a search, this publisher sends a
-    /// new `Void`. Use the ``get`` methods to retrieve actual values once a
+    /// Every time this instance concludes a search, this publisher sends a new `Void`. Use the ``get`` methods to retrieve actual values once a
     /// ping arrives.
     ///
     /// Delivery is guaranteed to occur on the main actor. SwiftUI consumers
@@ -101,22 +100,17 @@ public extension AsyncMetadata {
 
 /// Relates to a metadata value, allowing you to look up a value by its key.
 ///
-/// This also allows one key to map to many different metadata values in
-/// order of preference (e.g. common track title vs iTunes song name vs
-/// QuickTime user-specified track name vs ...).
+/// This also allows one key to map to many different metadata values in order of preference (e.g. common track title vs iTunes song name vs QuickTime user-specified track name vs etc...)
 public struct AsyncMetadataKey<Value: Sendable>: Identifiable, Sendable {
-
-    /// Uniquely identifies this key amongst all other `AsyncMetadataKey`s.
+    
+    /// Uniquely identifies this key amongst all other `AsyncMetadataKey`s
     public let id: Id
-
-    /// The AVKit metadata identifiers which correspond to this key, sorted
-    /// with the most-preferred first.
+    
+    /// The AVKit metadata identifiers which correspond to this key, sorted with the most-preferred first.
     ///
-    /// This allows one key to map to many different metadata values in
-    /// order of preference (e.g. common track title vs iTunes song name vs
-    /// QuickTime user-specified track name vs ...).
+    /// This allows one key to map to many different metadata values in order of preference (e.g. common track title vs iTunes song name vs QuickTime user-specified track name vs etc...)
     public let identifiers: [AVMetadataIdentifier]
-
+    
     public let retrievalApproach: AsyncMetadata.RetrievalApproach<Value> = .justLoadValue
 }
 
@@ -140,19 +134,16 @@ public extension AsyncMetadata {
 
 
 public extension AsyncMetadata {
-
-    /// How to retrieve the metadata from the system.
+    
+    /// How to retrieve the metadata from the system
     enum RetrievalApproach<Value: Sendable>: Sendable {
-
-        /// Just directly loads the value with `AVMetadataItem.load(_:)`
-        /// `AVPartialAsyncProperty.value` and attempts to cast it to `Value`.
+        
+        /// Just directly loads the value with ``AVMetadataItem.load(_:)`` ``AVPartialAsyncProperty.value`` and attempts to cast it to `Value`
         case justLoadValue
-
-        /// Loads the value with `AVMetadataItem.load(_:)`
-        /// `AVPartialAsyncProperty.dataValue`, and then sends that `Data` to
-        /// the given function.
+        
+        /// Loads the value with ``AVMetadataItem.load(_:)`` ``AVPartialAsyncProperty.dataValue``, and then sends that `Data` to the given function
         case loadDataValue(initializer: @Sendable (Data) -> Value)
-
+        
 //        case loadSomethingElse(AVPartialAsyncProperty)
     }
 }
@@ -161,7 +152,7 @@ public extension AsyncMetadata {
 // MARK: Default keys
 
 public extension AsyncMetadataKey where Value == String {
-    /// The media's title (or name).
+    /// The media's title (or name)
     static let title = Self(id: "title", identifiers: [
         .quickTimeUserDataTrackName,
         .identifier3GPUserDataTitle,
@@ -171,11 +162,11 @@ public extension AsyncMetadataKey where Value == String {
         .quickTimeMetadataTitle,
         .icyMetadataStreamTitle,
     ])
-
-    /// The media's creator (or author, or artist, or band, or composer, or ...).
+    
+    /// The media's creator (or author, or artist, or band, or composer, or...)
     static let creator = Self(id: "creator", identifiers: [
         .identifier3GPUserDataAuthor,
-
+        
         .commonIdentifierArtist,
         .commonIdentifierAuthor,
         .iTunesMetadataArtist,
@@ -184,11 +175,11 @@ public extension AsyncMetadataKey where Value == String {
         .iTunesMetadataAlbumArtist,
         .quickTimeMetadataArtist,
         .quickTimeMetadataAuthor,
-
+        
         .identifier3GPUserDataPerformer,
         .id3MetadataLyricist,
         .iTunesMetadataSoloist,
-
+        
         .quickTimeMetadataArranger,
         .quickTimeUserDataComposer,
         .quickTimeMetadataComposer,
@@ -197,11 +188,11 @@ public extension AsyncMetadataKey where Value == String {
         .iTunesMetadataArranger,
         .id3MetadataConductor,
         .iTunesMetadataDirector,
-
+        
         .id3MetadataOriginalArtist,
         .id3MetadataPublisher,
     ])
-
+    
     /// The album (or collection, or compilation) the media belongs to.
     static let album = Self(id: "album", identifiers: [
         .commonIdentifierAlbumName,
@@ -215,7 +206,7 @@ public extension AsyncMetadataKey where Value == String {
 
 
 public extension AsyncMetadataKey where Value == NativeImage? {
-
+    
     /// The media's cover art (or thumbnail, or attached picture).
     static let image = Self(id: "image", identifiers: [
         .identifier3GPUserDataThumbnail,
@@ -229,7 +220,7 @@ public extension AsyncMetadataKey where Value == NativeImage? {
 // MARK: - 🌎 API / Retrieving values
 
 public extension AsyncMetadata {
-
+    
     /// Returns the already-found value at the given key, or starts the
     /// search and returns ``MetadataSearchResult/stillSearching``.
     ///
@@ -250,8 +241,8 @@ public extension AsyncMetadata {
         let search = lazySearch(for: key)
         return MetadataSearchResult(loadingState: search.loadingState)
     }
-
-
+    
+    
     /// Returns the already-found value at the given key, or awaits the
     /// search.
     ///
@@ -343,7 +334,7 @@ private extension AsyncMetadata {
             }
             self?.metadataUpdatePublisher.send(())
         }
-
+        
         __cache[key.id] = search
         return search
     }
@@ -371,16 +362,16 @@ private extension AsyncMetadata {
         else {
             return nil
         }
-
+        
         guard let rawValue = try await desiredMetadata.load(.value) else {
             return nil
         }
-
+        
         guard let typedValue = rawValue as? Value else {
             log(warning: "Raw value found, but was of type \(type(of: rawValue)), which couldn't be converted to \(Value.self)")
             return nil
         }
-
+        
         return typedValue as any Sendable
     }
 }
@@ -409,12 +400,10 @@ internal extension AsyncMetadata {
 // MARK: - Search result
 
 /// The result of searching for metadata.
-//@available(*, deprecated, renamed: "LoadingState")
 public typealias MetadataSearchResult<Value: Metadata> = FailableLoadingState<Value, NotFound>
 
 
 
-//@available(*, deprecated, renamed: "LoadingState")
 public extension MetadataSearchResult where Failure == NotFound {
     
     /// Some search is still ongoing. Check back later for the result.
@@ -528,8 +517,8 @@ extension AsyncMetadata: Equatable {
     public static func == (lhs: AsyncMetadata, rhs: AsyncMetadata) -> Bool {
         lhs.id == rhs.id
     }
-
-
+    
+    
     public static func ~= (lhs: AsyncMetadata, rhs: AsyncMetadata) -> Bool {
         lhs.id == rhs.id
     }

@@ -452,11 +452,11 @@ private extension LibraryView {
         
         var title: LocalizedStringKey {
             switch self {
-            case .forever:           "Keep Forever"
-            case .pastDay:           "Keep Past Day"
-            case .pastWeek:          "Keep Past Week"
-            case .pastYear:          "Keep Past Year"
-            case .hundredMostRecent: "Keep 100 Most Recent"
+            case .forever:           "Keep history forever"
+            case .pastDay:           "Delete history older than a day"
+            case .pastWeek:          "Delete history older than a week"
+            case .pastYear:          "Delete history older than a year"
+            case .hundredMostRecent: "Only remember 100 recent plays"
             }
         }
     }

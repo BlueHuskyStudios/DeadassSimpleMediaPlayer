@@ -75,7 +75,7 @@ struct ContentView: View {
         
         
         .task {
-            await session.restoreIfNeeded()
+            await session.loadIfNeeded()
         }
         
         

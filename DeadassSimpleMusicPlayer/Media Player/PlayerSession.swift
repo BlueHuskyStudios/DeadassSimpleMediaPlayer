@@ -118,7 +118,7 @@ public extension PlayerSession {
     /// Rebuilds this session from whatever the previous one left behind: the queue (re-resolving every file), the play position, the repeat mode, the history, and all saved playlists.
     ///
     /// Safe to call any number of times; only the first call does anything. The restored play position isn't applied here — the session doesn't own a player — it's held for the player-owning view to claim via ``takePendingRestoredSeek(forEntryWithID:)``.
-    func restoreIfNeeded() async {
+    func loadIfNeeded() async {
         guard !hasRestored else { return }
         hasRestored = true
         
@@ -386,6 +386,8 @@ public extension PlayerSession {
     /// - Parameters:
     ///   - data:          The playlist file's contents
     ///   - suggestedName: What to call the import — typically the file's own name
+    ///
+    /// - Returns: A saved playlist, or `nil` if the given data is an invalid playlist
     @discardableResult
     func importPlaylist(fromM3U8 data: Data, suggestedName: String) -> SavedPlaylist? {
         guard let text = String(data: data, encoding: .utf8) else {

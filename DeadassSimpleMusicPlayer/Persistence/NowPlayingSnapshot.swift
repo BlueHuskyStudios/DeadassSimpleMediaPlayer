@@ -67,7 +67,7 @@ public extension NowPlayingSnapshot {
         restored.reserveCapacity(entries.count)
         
         for entry in entries {
-            restored.append(await .resolving(id: entry.id, entry.reference))
+            restored.append(await .resolving(entry.reference, id: entry.id))
         }
         
         let validIDs = Set(restored.map(\.id))

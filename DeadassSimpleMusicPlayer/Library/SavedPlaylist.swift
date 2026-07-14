@@ -7,6 +7,8 @@
 
 import Foundation
 
+import SimpleLogging
+
 
 
 /// A named, ordered list of media files, stored durably so it can be played again in any future session.
@@ -82,7 +84,12 @@ public extension SavedPlaylist {
     
     /// ``m3u8Text``, rendered to the bytes an exported file should contain
     var exportedM3U8Data: Data {
-        Data(m3u8Text.utf8)
+        guard let data = m3u8Text.data(using: .utf8) else {
+            log(error: "Somehow, the m3u8 text I generated wasn't UTF-8")
+            return Data()
+        }
+        
+        return data
     }
     
     

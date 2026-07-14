@@ -255,7 +255,7 @@ public extension Playlist {
 
 public extension Playlist {
     
-    /// Puts a freshly-shuffled play order into effect.
+    /// Temporary: Shuffles the playback order. Calling ``unshuffle()`` restores the user-specified playback order.
     ///
     /// The current entry is placed first in the new order (when there is one), matching the expectation that enabling shuffle mid-song shuffles what comes *next*, not what's playing. The user-specified order in ``entries`` is untouched, so ``unshuffle()`` is always a perfect undo.
     mutating func shuffle() {
