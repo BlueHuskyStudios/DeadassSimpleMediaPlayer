@@ -1,6 +1,15 @@
 {
-  "originHash" : "9e0be2442c4e1419c83f3026bc23c8447d15951b878a5cbd62d2814d2630c037",
+  "originHash" : "bd72aaa8ca0bbeb9ae3eedf2c011f9e510c748c0b45588ae3ae48679fc6add67",
   "pins" : [
+    {
+      "identity" : "howl",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/BlueHuskyStudios/Howl.git",
+      "state" : {
+        "revision" : "3dd126bb815ba7e48e489e9115009c41035adf41",
+        "version" : "3.0.1"
+      }
+    },
     {
       "identity" : "swift-async-algorithms",
       "kind" : "remoteSourceControl",
@@ -74,6 +83,15 @@
       }
     },
     {
+      "identity" : "swift-multiplicativearithmetic",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/RougeWare/Swift-MultiplicativeArithmetic.git",
+      "state" : {
+        "revision" : "960ccc54d6c876983c6658d4aca637b4685e9841",
+        "version" : "2.1.0"
+      }
+    },
+    {
       "identity" : "swift-optional-tools",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/RougeWare/Swift-Optional-Tools.git",
@@ -89,6 +107,15 @@
       "state" : {
         "revision" : "8efcac712d0bd765ac903cb9fd27cc49b6b4ce58",
         "version" : "1.2.1"
+      }
+    },
+    {
+      "identity" : "swift-rectangle-tools",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/RougeWare/Swift-Rectangle-Tools.git",
+      "state" : {
+        "revision" : "146dd37c698a7c16c00e881e27ffd0f27956167c",
+        "version" : "2.18.0"
       }
     },
     {

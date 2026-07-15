@@ -17,6 +17,7 @@
 		092B44D12FE695D8004EE1B5 /* ConcurrencyTools in Frameworks */ = {isa = PBXBuildFile; productRef = 092B44D02FE695D8004EE1B5 /* ConcurrencyTools */; };
 		0947B83E3002363600A5F26F /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 0947B83D3002363600A5F26F /* README.md */; };
 		0947B8403002365100A5F26F /* LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 0947B83F3002365100A5F26F /* LICENSE.txt */; };
+		0947B8433006EE0A00A5F26F /* Howl in Frameworks */ = {isa = PBXBuildFile; productRef = 0947B8423006EE0A00A5F26F /* Howl */; };
 		0971EAA32FF6699B00B4E263 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0971EAA22FF6699B00B4E263 /* LibraryView.swift */; };
 		0971EAA42FF6699B00B4E263 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0971EAA22FF6699B00B4E263 /* LibraryView.swift */; };
 		0988E1192FEA0A8400A4E9BA /* AsyncAlgorithms in Frameworks */ = {isa = PBXBuildFile; productRef = 0988E1182FEA0A8400A4E9BA /* AsyncAlgorithms */; };
@@ -100,6 +101,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		091322293007809B00887AE3 /* BlueHuskyStudios */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = BlueHuskyStudios; sourceTree = "<group>"; };
 		092A407E2FF5C90A00B05BB3 /* Library */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Library; sourceTree = "<group>"; };
 		092A40852FF5C91F00B05BB3 /* Persistence */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Persistence; sourceTree = "<group>"; };
 		092A408D2FF5D73100B05BB3 /* ConcurrencyTools */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = ConcurrencyTools; sourceTree = "<group>"; };
@@ -135,6 +137,7 @@
 				B96595BF2C18DFF7006348E6 /* SimpleLogging in Frameworks */,
 				B96595BC2C18C071006348E6 /* LazyContainers in Frameworks */,
 				0988E1192FEA0A8400A4E9BA /* AsyncAlgorithms in Frameworks */,
+				0947B8433006EE0A00A5F26F /* Howl in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -230,6 +233,7 @@
 		B9B940A72C3C4DB300E54F32 /* Extensions */ = {
 			isa = PBXGroup;
 			children = (
+				091322293007809B00887AE3 /* BlueHuskyStudios */,
 				B9A692402C44BADC0032FB7B /* Rougeware */,
 				B955C46A2C442A6100637C85 /* Foundation */,
 				B9B940A82C3C4DBB00E54F32 /* SwiftUI */,
@@ -268,6 +272,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				091322293007809B00887AE3 /* BlueHuskyStudios */,
 				092A407E2FF5C90A00B05BB3 /* Library */,
 				092A40852FF5C91F00B05BB3 /* Persistence */,
 				092A408D2FF5D73100B05BB3 /* ConcurrencyTools */,
@@ -300,6 +305,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				091322293007809B00887AE3 /* BlueHuskyStudios */,
 				092A407E2FF5C90A00B05BB3 /* Library */,
 				092A40852FF5C91F00B05BB3 /* Persistence */,
 				092A408D2FF5D73100B05BB3 /* ConcurrencyTools */,
@@ -318,6 +324,7 @@
 				0988E1182FEA0A8400A4E9BA /* AsyncAlgorithms */,
 				0988E11A2FEA0A8400A4E9BA /* AsyncStreaming */,
 				092A408B2FF5D6B600B05BB3 /* CollectionTools */,
+				0947B8423006EE0A00A5F26F /* Howl */,
 			);
 			productName = DeadassSimpleMusicPlayer;
 			productReference = B9B6F0D82C1511390093BAED /* Dead-Simple Media Player.app */;
@@ -357,6 +364,7 @@
 				092B44CF2FE69430004EE1B5 /* XCRemoteSwiftPackageReference "Swift-Concurrency-Tools" */,
 				0988E1172FEA0A8400A4E9BA /* XCRemoteSwiftPackageReference "swift-async-algorithms" */,
 				092A408A2FF5D6B600B05BB3 /* XCRemoteSwiftPackageReference "Swift-Collection-Tools" */,
+				0947B8413006EE0A00A5F26F /* XCRemoteSwiftPackageReference "Howl" */,
 			);
 			productRefGroup = B9B6F0D92C1511390093BAED /* Products */;
 			projectDirPath = "";
@@ -791,6 +799,14 @@
 				minimumVersion = 0.3.1;
 			};
 		};
+		0947B8413006EE0A00A5F26F /* XCRemoteSwiftPackageReference "Howl" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/BlueHuskyStudios/Howl.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.0.1;
+			};
+		};
 		0988E1172FEA0A8400A4E9BA /* XCRemoteSwiftPackageReference "swift-async-algorithms" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/apple/swift-async-algorithms.git";
@@ -883,6 +899,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 092B44CF2FE69430004EE1B5 /* XCRemoteSwiftPackageReference "Swift-Concurrency-Tools" */;
 			productName = ConcurrencyTools;
+		};
+		0947B8423006EE0A00A5F26F /* Howl */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0947B8413006EE0A00A5F26F /* XCRemoteSwiftPackageReference "Howl" */;
+			productName = Howl;
 		};
 		0988E1182FEA0A8400A4E9BA /* AsyncAlgorithms */ = {
 			isa = XCSwiftPackageProductDependency;

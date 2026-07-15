@@ -11,6 +11,7 @@ import UniformTypeIdentifiers
 
 import CollectionTools
 import SimpleLogging
+import Howl
 
 
 
@@ -23,12 +24,17 @@ private let minimumRepeatModeCyclesBeforeShowingTip = RepeatMode.allCases.count 
 /// The main screen stays a dead-simple player; anything queue-, playlist-, or history-shaped lives here instead, so complexity is opt-in — you only ever see it by asking for it.
 struct LibraryView: View {
     
+    // MARK: External state
+    
     /// Bindable because the queue tab mutates the queue directly (reorder, remove) through bindings and callbacks
     @Bindable
     var session: PlayerSession
     
     @Environment(\.dismiss)
     private var dismiss
+    
+    
+    // MARK: Internal state
     
     @State
     private var tab = SelectedTab.queue
@@ -46,6 +52,18 @@ struct LibraryView: View {
     @State
     private var pendingExport: PendingExport? = nil
     
+    
+    // MARK: Error handling
+    
+    @State
+    private var currentError: ToastError?
+    
+    
+    
+    
+    
+    
+    // MARK: Tabs
     
     var body: some View {
         NavigationStack {
@@ -92,6 +110,8 @@ struct LibraryView: View {
                 }
             }
         }
+        
+        .toast(error: $currentError)
     }
     
     
@@ -339,11 +359,29 @@ private extension LibraryView {
                         
                         .contextMenu {
                             Button("Export as M3U8", systemImage: "square.and.arrow.up") {
-                                export(playlist, as: .m3uPlaylist)
+                                do {
+                                    try export(playlist, as: .m3uPlaylist)
+                                }
+                                catch {
+                                    currentError = ToastError(
+                                        errorDescription: "m3u8 export failed",
+                                        cause: error,
+                                        systemImage: "square.and.arrow.up.trianglebadge.exclamationmark",
+                                    )
+                                }
                             }
                             
                             Button("Export as JSON", systemImage: "curlybraces") {
-                                export(playlist, as: .json)
+                                do {
+                                    try export(playlist, as: .json)
+                                }
+                                catch {
+                                    currentError = ToastError(
+                                        errorDescription: "JSON export failed",
+                                        cause: error,
+                                        systemImage: "square.and.arrow.up.trianglebadge.exclamationmark",
+                                    )
+                                }
                             }
                         }
                     }
@@ -405,23 +443,18 @@ private extension LibraryView {
     
     
     /// Renders the playlist into the chosen format and stages it for the exporter sheet
-    func export(_ playlist: SavedPlaylist, as contentType: UTType) {
-        do {
-            let data: Data = if .json == contentType {
-                try playlist.exportedJSONData()
-            }
-            else {
-                playlist.exportedM3U8Data
-            }
-            
-            pendingExport = PendingExport(
-                document: ExportablePlaylistDocument(data: data),
-                contentType: contentType,
-                defaultFilename: playlist.name)
+    func export(_ playlist: SavedPlaylist, as contentType: UTType) throws {
+        let data: Data = if .json == contentType {
+            try playlist.exportedJSONData()
         }
-        catch {
-            log(error: "Couldn't render “\(playlist.name)” for export: \(error)")
+        else {
+            playlist.exportedM3U8Data
         }
+        
+        pendingExport = PendingExport(
+            document: ExportablePlaylistDocument(data: data),
+            contentType: contentType,
+            defaultFilename: playlist.name)
     }
     
     
@@ -439,11 +472,20 @@ private extension LibraryView {
                 }
             }
             catch {
+                currentError = ToastError(
+                    errorDescription: "Import failed",
+                    cause: error,
+                    systemImage: "square.and.arrow.down.badge.xmark",
+                )
                 log(error: "Couldn't read that playlist file: \(error)")
             }
         }
         onFailure: {
-            _ = log(error: "I couldn't get the necessary permissions to read from this URL: \(url)")
+            currentError = ToastError(
+                errorDescription: "Access denied",
+                systemImage: "externaldrive.trianglebadge.exclamationmark",
+            )
+            log(error: "I couldn't get the necessary permissions to read from this URL: \(url)")
         }
     }
     
