@@ -354,17 +354,14 @@ public extension PlayerSession {
     
     
     /// Removes a saved playlist — from memory and disk together, so the two never disagree
-    func delete(playlistWithID id: SavedPlaylist.ID) {
+    /// - Parameter id: The ID of the playlist to delete
+    /// - Throws: An error if the playlist couldn't be deleted
+    func delete(playlistWithID id: SavedPlaylist.ID) throws {
         savedPlaylists.removeAll { id == $0.id }
         
         guard let playlistsStore else { return }
         
-        do {
-            try playlistsStore.delete(documentNamed: id.uuidString)
-        }
-        catch {
-            log(error: "Couldn't delete the saved playlist document “\(id)”: \(error)")
-        }
+        try playlistsStore.delete(documentNamed: id.uuidString)
     }
     
     
@@ -395,9 +392,8 @@ public extension PlayerSession {
     ///   - data:          The playlist file's contents
     ///   - suggestedName: What to call the import — typically the file's own name
     ///
-    /// - Returns: A saved playlist, or `nil` if the given data is an invalid playlist
-    @discardableResult
-    func importPlaylist(fromM3U8 data: Data, suggestedName: String) -> SavedPlaylist? {
+    /// - Returns: A saved playlist and the number of failed track-imports, or `nil` if the given data is an invalid playlist
+    func importPlaylist(fromM3U8 data: Data, suggestedName: String) -> (SavedPlaylist, failedTrackImportCount: Int)? {
         guard let text = String(data: data, encoding: .utf8) else {
             log(error: "That M3U8 file isn't UTF-8 text, so I can't read it")
             return nil
@@ -432,13 +428,15 @@ public extension PlayerSession {
             return nil
         }
         
-        if matchedItems.count < entryLines.count {
+        let failedTrackImportCount = entryLines.count - matchedItems.count
+        
+        if failedTrackImportCount > 0 {
             log(warning: "Imported \(matchedItems.count) of \(entryLines.count) M3U8 entries; the rest named files this app has never been granted access to")
         }
         
         let playlist = SavedPlaylist(name: suggestedName, items: matchedItems)
         upsert(playlist)
-        return playlist
+        return (playlist, failedTrackImportCount: failedTrackImportCount)
     }
     
     

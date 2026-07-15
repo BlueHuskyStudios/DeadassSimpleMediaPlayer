@@ -24,7 +24,7 @@ public struct ToastError: LocalizedError, Identifiable {
     public var recoverySuggestion: String? = nil
     
     /// The name for the system SF Symbol which will appear on the toast itself
-    public var systemImage: String
+    public var systemImage: String?
 }
 
 
@@ -33,7 +33,7 @@ public extension ToastError {
     init(id: UUID = UUID(),
          errorDescription: String,
          cause: Error,
-         systemImage: String,
+         systemImage: String?,
     ) {
         self.init(
             id: id,

@@ -14,8 +14,13 @@ import Howl
 public extension ToastError {
     
     /// The icon to put on the toast itself
-    var icon: Image {
-        Image(systemName: systemImage)
+    var icon: Image? {
+        if let systemImage {
+            Image(systemName: systemImage)
+        }
+        else {
+            nil
+        }
     }
 }
 

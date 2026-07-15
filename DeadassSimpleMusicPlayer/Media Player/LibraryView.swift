@@ -389,7 +389,18 @@ private extension LibraryView {
                         // IDs gathered before any removal, since each removal shifts the offsets they were gathered from
                         let ids = offsets.map { session.savedPlaylists[$0].id }
                         for id in ids {
-                            session.delete(playlistWithID: id)
+                            do {
+                                try session.delete(playlistWithID: id)
+                            }
+                            catch {
+                                log(error: "Couldn't delete the saved playlist document “\(id)”: \(error)")
+                                
+                                currentError = ToastError(
+                                    errorDescription: "Playlist not deleted",
+                                    cause: error,
+                                    systemImage: "trash.slash",
+                                )
+                            }
                         }
                     }
                 }
@@ -468,7 +479,22 @@ private extension LibraryView {
                     session.importPlaylist(fromExportedJSON: data)
                 }
                 else {
-                    session.importPlaylist(fromM3U8: data, suggestedName: url.deletingPathExtension().lastPathComponent)
+                    guard let (_, failedTrackImportCount) = session.importPlaylist(fromM3U8: data, suggestedName: url.deletingPathExtension().lastPathComponent)
+                    else {
+                        currentError = ToastError(
+                            errorDescription: "Import failed.",
+                            recoverySuggestion: "Try again",
+                            systemImage: "square.and.arrow.down.badge.xmark",
+                        )
+                        return
+                    }
+                    
+                    if 0 < failedTrackImportCount {
+                        currentError = ToastError(
+                            errorDescription: "\(failedTrackImportCount) tracks weren't imported.",
+                            recoverySuggestion: "You may need to import them separately.",
+                        )
+                    }
                 }
             }
             catch {
