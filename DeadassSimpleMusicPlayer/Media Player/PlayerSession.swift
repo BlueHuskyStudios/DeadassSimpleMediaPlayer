@@ -42,11 +42,19 @@ public final class PlayerSession {
         }
     }
     
+    #if DEBUG
+    public var history = PlaybackHistory()
+    #else
     /// What's been played. Read-only from outside; mutations go through session methods (like ``recordCurrentEntryInHistoryIfNeeded()``) so each one lands on disk the moment it happens.
     public private(set) var history = PlaybackHistory()
+    #endif
     
+    #if DEBUG
+    public var savedPlaylists: [SavedPlaylist] = []
+    #else
     /// Every saved playlist, sorted by name. Read-only from outside; mutations go through session methods (like ``upsert(_:)``) so memory and disk never disagree.
     public private(set) var savedPlaylists: [SavedPlaylist] = []
+    #endif
     
     
     // MARK: Non-observable internals

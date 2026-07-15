@@ -103,6 +103,7 @@
 		092A407E2FF5C90A00B05BB3 /* Library */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Library; sourceTree = "<group>"; };
 		092A40852FF5C91F00B05BB3 /* Persistence */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Persistence; sourceTree = "<group>"; };
 		092A408D2FF5D73100B05BB3 /* ConcurrencyTools */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = ConcurrencyTools; sourceTree = "<group>"; };
+		097A4C263006FC7D00E31CE0 /* _demo data */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = "_demo data"; sourceTree = "<group>"; };
 		0988E11C2FEA0DF700A4E9BA /* CollectionTools */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = CollectionTools; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
@@ -209,6 +210,7 @@
 				B989BF772C223725007D589E /* Media Player */,
 				092A40852FF5C91F00B05BB3 /* Persistence */,
 				B96595B82C18BD4E006348E6 /* AsyncMetadata.swift */,
+				097A4C263006FC7D00E31CE0 /* _demo data */,
 				B9C6C1772C336BFD009F6AC7 /* AVKit + Sendable.swift */,
 				B9B6F0DF2C15113C0093BAED /* Assets.xcassets */,
 				B9B6F0E12C15113C0093BAED /* DeadassSimpleMusicPlayer.entitlements */,
@@ -269,6 +271,7 @@
 				092A407E2FF5C90A00B05BB3 /* Library */,
 				092A40852FF5C91F00B05BB3 /* Persistence */,
 				092A408D2FF5D73100B05BB3 /* ConcurrencyTools */,
+				097A4C263006FC7D00E31CE0 /* _demo data */,
 				0988E11C2FEA0DF700A4E9BA /* CollectionTools */,
 			);
 			name = "Dead-Simple Media Player for iOS 16";
@@ -300,6 +303,7 @@
 				092A407E2FF5C90A00B05BB3 /* Library */,
 				092A40852FF5C91F00B05BB3 /* Persistence */,
 				092A408D2FF5D73100B05BB3 /* ConcurrencyTools */,
+				097A4C263006FC7D00E31CE0 /* _demo data */,
 				0988E11C2FEA0DF700A4E9BA /* CollectionTools */,
 			);
 			name = "Dead-Simple Media Player";

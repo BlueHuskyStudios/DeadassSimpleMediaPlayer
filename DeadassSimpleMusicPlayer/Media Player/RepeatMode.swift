@@ -23,3 +23,19 @@ public enum RepeatMode: String, Codable, CaseIterable, Sendable {
     /// Replay the current file until told otherwise
     case currentItem
 }
+
+
+
+public extension RepeatMode {
+    
+    /// Cycles to the next repeat mode.
+    ///
+    /// Calling this repeatedly will eventually result in each and every repeat mode being set, and returning to the one before you started calling it.
+    mutating func cycleNext() {
+        switch self {
+        case .off: self = .wholeQueue
+        case .wholeQueue: self = .currentItem
+        case .currentItem: self = .off
+        }
+    }
+}

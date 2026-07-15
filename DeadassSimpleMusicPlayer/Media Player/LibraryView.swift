@@ -6,10 +6,15 @@
 //
 
 import SwiftUI
+import TipKit
 import UniformTypeIdentifiers
 
 import CollectionTools
 import SimpleLogging
+
+
+
+private let minimumRepeatModeCyclesBeforeShowingTip = RepeatMode.allCases.count * 4
 
 
 
@@ -45,32 +50,44 @@ struct LibraryView: View {
     var body: some View {
         NavigationStack {
             TabView(selection: $tab) {
-                Tab(value: SelectedTab.queue) {
+                Tab("Now Playing", systemImage: "play.square.stack", value: SelectedTab.queue) {
                     queueTab
-                } label: {
-                    Label("Queue", systemImage: "list.bullet.below.rectangle")
                 }
 
-                Tab(value: SelectedTab.playlists) {
+                Tab("Playlists", systemImage: "music.note.list", value: SelectedTab.playlists) {
                     playlistsTab
-                } label: {
-                    Label("Playlists", systemImage: "music.note.list")
                 }
                 
-                Tab(value: SelectedTab.history) {
+                Tab("History", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90", value: SelectedTab.history) {
                     historyTab
-                } label: {
-                    Label("History", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
                 }
             }
             .navigationTitle("Library")
             .navigationBarTitleDisplayMode(.inline)
             
             .toolbar {
-                
                 ToolbarItem(placement: .navigation) {
                     Button("Done", systemImage: "xmark") {
                         dismiss()
+                    }
+                }
+                
+                ToolbarItemGroup() {
+                    switch tab {
+                    case .queue:
+                        shuffleToggle
+                        
+                        repeatModeMenu
+                        
+                        EditButton()
+                        
+                    case .playlists:
+                        EmptyView()
+                        
+                    case .history:
+                        retentionMenu
+                        
+                        ClearHistoryButton(session: session)
                     }
                 }
             }
@@ -101,6 +118,9 @@ struct LibraryView: View {
 
 private extension LibraryView {
     
+    private static let repeatModeButtonAnchorId = "LoopButtonAnchor"
+    
+    
     /// The now-playing queue, in the order the user is actually hearing it: the shuffled order while shuffled, the user-specified order otherwise
     var orderedEntries: [PlaylistEntry] {
         session.queue.effectiveOrder.compactMap(session.queue.entry(withID:))
@@ -117,46 +137,42 @@ private extension LibraryView {
         }
         else {
             List {
-                ForEach(orderedEntries) { entry in
-                    Button {
-                        session.play(entryWithID: entry.id) // Harmlessly no-ops for the already-current entry
-                    } label: {
-                        QueueEntryRow(entry: entry, isCurrent: entry.id == session.queue.currentEntry?.id)
+                Section {
+                    ForEach(orderedEntries) { entry in
+                        Button {
+                            session.play(entryWithID: entry.id) // Harmlessly no-ops for the already-current entry
+                        } label: {
+                            QueueEntryRow(entry: entry, isCurrent: entry.id == session.queue.currentEntry?.id)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(!entry.isPlayable)
                     }
-                    .buttonStyle(.plain)
-                    .disabled(!entry.isPlayable)
-                }
-                .onMove { source, destination in
-                    session.queue.moveEntries(fromEffectiveOffsets: source, toEffectiveOffset: destination)
-                }
-                .onDelete { offsets in
-                    // IDs gathered before any removal, since each removal shifts the offsets they were gathered from
-                    let ids = offsets.map { orderedEntries[$0].id }
-                    for id in ids {
-                        session.queue.remove(entryWithID: id)
+                    .onMove { source, destination in
+                        session.queue.moveEntries(fromEffectiveOffsets: source, toEffectiveOffset: destination)
+                    }
+                    .onDelete { offsets in
+                        // IDs gathered before any removal, since each removal shifts the offsets they were gathered from
+                        let ids = offsets.map { orderedEntries[$0].id }
+                        for id in ids {
+                            session.queue.remove(entryWithID: id)
+                        }
+                    }
+                } header: {
+                    TipView(RepeatButtonTip(), arrowEdge: .top, anchorID: Self.repeatModeButtonAnchorId)
+                        .listRowBackground(EmptyView())
+                } footer: {
+                    if session.queue.isShuffled {
+                        Text("Shuffling is temporary! You can reorder songs, but they'll be returned to the same unshuffled order when you unshuffle.")
                     }
                 }
-            }
-            
-            .toolbar {
-                ToolbarItemGroup(placement: .bottomBar) {
-                    shuffleToggle
-                    
-                    Spacer()
-                    
-                    repeatModeMenu
-                    
-                    Spacer()
-                    
-                    EditButton()
-                }
+                .headerProminence(.increased)
             }
         }
     }
     
     
     var shuffleToggle: some View {
-        Toggle(isOn: Binding(
+        Toggle("Shuffle", systemImage: "shuffle", isOn: Binding(
             get: { session.queue.isShuffled },
             set: { shouldShuffle in
                 if shouldShuffle {
@@ -166,26 +182,127 @@ private extension LibraryView {
                     session.queue.unshuffle()
                 }
             })
-        ) {
-            Label("Shuffle", systemImage: "shuffle")
-        }
+        )
         .toggleStyle(.button)
     }
     
     
     var repeatModeMenu: some View {
         Menu {
-            Picker("Repeat", selection: $session.repeatMode) {
+            Picker("Repeat", selection: Binding(
+                get: { session.repeatMode },
+                set: { newMode in
+                    session.repeatMode = newMode
+                    RepeatButtonTip.didOpenRepeatMenu.sendDonation()
+                }
+            )) {
                 ForEach(RepeatMode.allCases, id: \.self) { mode in
-                    Label(mode.displayName, systemImage: mode.systemImageName)
+                    Label(mode.displayName, systemImage: mode.systemImageName_menuItem)
                         .tag(mode)
                 }
             }
         } label: {
-            Label(session.repeatMode.displayName, systemImage: session.repeatMode.systemImageName)
+            Image(systemName: session.repeatMode.systemImageName_preview)
+                .tipAnchor(Self.repeatModeButtonAnchorId)
+                
+                // What follows ain't ideal by any means. I wanna style this like a toggle, where it looks like the
+                // shuffle button does. However, I tired many possible approaches and none rendered correctly.
+                // What follows ain't kosher and should be replaced ASAP, but for now it's the best possible solution I
+                // could find.
+                //
+                // – Ky, 2026-07-14
+                .foregroundStyle(
+                    { () -> Color in
+                        switch session.repeatMode {
+                        case .off: Color.primary
+                        case .currentItem, .wholeQueue: Color.accentColor
+                        }
+                    }()
+                )
+                .font(
+                    { () -> Font? in
+                        switch session.repeatMode {
+                        case .off: nil
+                        case .currentItem, .wholeQueue: .title
+                        }
+                    }()
+                )
+                .padding(
+                    .horizontal,
+                    { () -> CGFloat? in
+                        switch session.repeatMode {
+                        case .off: 6.5
+                        case .currentItem, .wholeQueue: 0
+                        }
+                    }()
+                )
+        } primaryAction: {
+            session.repeatMode.cycleNext()
+            RepeatButtonTip.repeatModeCycles.sendDonation()
         }
     }
 }
+
+
+
+private struct RepeatButtonTip: Tip {
+    
+    static let repeatModeCycles: Event = Event(id: "repeatModeCycles", donationLimit: .init(maximumCount: minimumRepeatModeCyclesBeforeShowingTip))
+    static let didOpenRepeatMenu: Event = Event(id: "didOpenRepeatMenu", donationLimit: .init(maximumCount: 1))
+    
+    // https://developer.apple.com/forums/thread/740849
+    var id: String { "RepeatButtonTip" }
+    
+    
+    var title: Text {
+        Text("Press & hold")
+    }
+    
+    var message: Text? {
+        Text("""
+            You can select a specific loop mode if you
+            **press & hold** the \(Image(systemName: "repeat")) loop button
+            """
+        )
+    }
+    
+    var rules: [Rule] {
+        // Compiler error because `minimumRepeatModeCyclesBeforeShowingTip` isn't a literal
+//        #Rule(Self.repeatModeCycles, Self.didOpenRepeatMenu) { repeatModeCycles, menuOpens in
+//            repeatModeCycles.donations.count >= minimumRepeatModeCyclesBeforeShowingTip
+//            && menuOpens.donations.isEmpty
+//        }
+        
+        Tips.Rule(.conjunction, [
+            Tips.Rule(Self.repeatModeCycles) { (repeatModeCycles) in
+                PredicateExpressions.build_Comparison(
+                    lhs: PredicateExpressions.build_KeyPath(
+                        root: PredicateExpressions.build_KeyPath(
+                            root: PredicateExpressions.build_Arg(repeatModeCycles),
+                            keyPath: \.donations
+                        ),
+                        keyPath: \.count
+                    ),
+                    rhs: PredicateExpressions.build_Arg(minimumRepeatModeCyclesBeforeShowingTip),
+                    op: .greaterThanOrEqual
+                )
+            },
+            Tips.Rule(Self.didOpenRepeatMenu) { (menuOpens) in
+                PredicateExpressions.build_Equal(
+                    lhs: PredicateExpressions.build_KeyPath(
+                        root: PredicateExpressions.build_KeyPath(
+                            root: PredicateExpressions.build_Arg(menuOpens),
+                            keyPath: \.donations
+                        ),
+                        keyPath: \.count
+                    ),
+                    rhs: PredicateExpressions.build_Arg(0)
+                )
+            }
+        ])
+    }
+}
+
 
 
 
@@ -197,17 +314,13 @@ private extension LibraryView {
     var playlistsTab: some View {
         List {
             Section {
-                Button {
+                Button("Save Now Playing queue as playlist…", systemImage: "plus") {
                     isNamingNewPlaylist = true
-                } label: {
-                    Label("Save Queue as Playlist…", systemImage: "plus")
                 }
                 .disabled(session.queue.entries.isEmpty)
                 
-                Button {
+                Button("Import a playlist…", systemImage: "square.and.arrow.down") {
                     isImportingPlaylist = true
-                } label: {
-                    Label("Import Playlist…", systemImage: "square.and.arrow.down")
                 }
             }
             
@@ -225,16 +338,12 @@ private extension LibraryView {
                         .buttonStyle(.plain)
                         
                         .contextMenu {
-                            Button {
+                            Button("Export as M3U8", systemImage: "square.and.arrow.up") {
                                 export(playlist, as: .m3uPlaylist)
-                            } label: {
-                                Label("Export as M3U8", systemImage: "square.and.arrow.up")
                             }
                             
-                            Button {
+                            Button("Export as JSON", systemImage: "curlybraces") {
                                 export(playlist, as: .json)
-                            } label: {
-                                Label("Export as JSON", systemImage: "curlybraces")
                             }
                         }
                     }
@@ -384,19 +493,10 @@ private extension LibraryView {
                             
                             Rectangle()
                                 .fill(Color(.systemGroupedBackground).opacity(0.001))
+                                .layoutPriority(-1)
                         }
                     }
                     .buttonStyle(.plain)
-                }
-            }
-            
-            .toolbar {
-                ToolbarItemGroup(placement: .bottomBar) {
-                    retentionMenu
-                    
-                    Spacer()
-                    
-                    ClearHistoryButton(session: session)
                 }
             }
         }
@@ -405,7 +505,7 @@ private extension LibraryView {
     
     /// Chooses how far back history is kept. Tightening the window prunes immediately.
     var retentionMenu: some View {
-        Menu {
+        Menu(currentRetentionTitle, systemImage: "timer") {
             Picker("Keep History", selection: Binding(
                 get: { session.history.retention },
                 set: { session.setHistoryRetention($0) })
@@ -415,8 +515,6 @@ private extension LibraryView {
                         .tag(preset.retention)
                 }
             }
-        } label: {
-            Label(currentRetentionTitle, systemImage: "clock.arrow.circlepath")
         }
     }
     
@@ -453,9 +551,9 @@ private extension LibraryView {
         var title: LocalizedStringKey {
             switch self {
             case .forever:           "Keep history forever"
-            case .pastDay:           "Delete history older than a day"
-            case .pastWeek:          "Delete history older than a week"
-            case .pastYear:          "Delete history older than a year"
+            case .pastDay:           "Delete after a day"
+            case .pastWeek:          "Delete after a week"
+            case .pastYear:          "Delete after a year"
             case .hundredMostRecent: "Only remember 100 recent plays"
             }
         }
@@ -474,7 +572,7 @@ private struct ClearHistoryButton: View {
     
     
     var body: some View {
-        Button("Clear History", role: .destructive) {
+        Button("Clear History", systemImage: "trash", role: .destructive) {
             isConfirming = true
         }
         .confirmationDialog("Clear all play history?", isPresented: $isConfirming, titleVisibility: .visible) {
@@ -504,7 +602,7 @@ private struct QueueEntryRow: View {
     
     
     var body: some View {
-        HStack(spacing: 12) {
+        HStack {
             Image(systemName: isCurrent ? "speaker.wave.2.fill" : "music.note")
                 .foregroundStyle(isCurrent ? Color.accentColor : Color.secondary)
                 .frame(width: 24)
@@ -520,9 +618,11 @@ private struct QueueEntryRow: View {
                 }
             }
             
-            Spacer(minLength: 0)
+            Rectangle()
+                .fill(Color(.systemGroupedBackground).opacity(0.001))
+                .layoutPriority(-1)
         }
-        .opacity(entry.isPlayable ? 1 : 0.5)
+        .opacity(entry.isPlayable ? 1 : 0.75)
         
         .onAppear(perform: refreshTitle)
         
@@ -548,7 +648,7 @@ private struct SavedPlaylistRow: View {
     
     
     var body: some View {
-        HStack(spacing: 12) {
+        HStack {
             Image(systemName: iconName)
                 .foregroundStyle(.secondary)
                 .frame(width: 24)
@@ -581,18 +681,27 @@ private extension RepeatMode {
     
     var displayName: LocalizedStringKey {
         switch self {
-        case .off:         "Don't Repeat"
-        case .wholeQueue:  "Repeat All"
-        case .currentItem: "Repeat One"
+        case .off:         "Don't loop"
+        case .wholeQueue:  "Loop all"
+        case .currentItem: "Loop one"
         }
     }
     
     
-    var systemImageName: String {
+    var systemImageName_menuItem: String {
         switch self {
-        case .off:         "repeat"
+        case .off:         "forward.end"
         case .wholeQueue:  "repeat"
         case .currentItem: "repeat.1"
+        }
+    }
+    
+    
+    var systemImageName_preview: String {
+        switch self {
+        case .off:         "repeat"
+        case .wholeQueue:  "repeat.circle.fill"
+        case .currentItem: "repeat.1.circle.fill"
         }
     }
 }
@@ -601,6 +710,13 @@ private extension RepeatMode {
 
 // MARK: - Previews
 
-#Preview {
+#Preview("Populated") {
+    LibraryView(session: PlayerSession.demo)
+        .onAppear {
+            Tips.showAllTipsForTesting()
+        }
+}
+
+#Preview("Empty") {
     LibraryView(session: PlayerSession(persisting: false))
 }
