@@ -9,8 +9,12 @@ import AVKit
 import Combine
 import MediaPlayer
 import SwiftUI
-import UIKit
 
+#if canImport(UIKit)
+import UIKit
+#endif
+
+import CollectionTools
 import SimpleLogging
 
 
@@ -18,18 +22,30 @@ import SimpleLogging
 /// An all-in-one media player for SwiftUI
 struct MediaPlayerView: View {
     
+    @Environment(\.horizontalSizeClass)
+    private var horizontalSizeClass
+    
+    @Environment(\.verticalSizeClass)
+    private var verticalSizeClass
+    
     // MARK: API
     
     /// The URL pointing to the media currently being played
     @Binding
-    var currentMediaUrl: URL?
+    var currentPlaylist: Playlist
+    
+    /// Owns playback policy & durable state: repeat behavior, play history, and session persistence. This view reports playback events to it and consults it for what finishing a file means.
+    let session: PlayerSession
+    
+    @State
+    var currentPlaylistItemIndex: Int = 0
     
     
     // MARK: Private state
     
-    @available(iOS, deprecated: 17)
+    @available(iOS, deprecated)
     @State
-    private var previousMediaUrl: URL?
+    private var previousMediaItem: MediaItem?
     
     @State
     private var currentMediaMetadata: AsyncMetadata? = nil
@@ -47,7 +63,21 @@ struct MediaPlayerView: View {
     private var forceUpdateBodge = Bool()
     
     @State
-    private var pipStatus = AVMediaPlayer.PipStatus.undefined
+    private var pipStatus = Player.PipStatus.undefined
+    
+    /// Watches the current `AVPlayerItem` for playing to its end, so the queue can advance. Replaced whenever the item is; dropping the old sink is what unsubscribes it.
+    @State
+    private var itemEndSink: AnyCancellable? = nil
+    
+    /// Waits for the current `AVPlayerItem` to become ready, so a restored playback position can be applied at a moment the item will actually honor it (seeks issued earlier are ignored or rejected outright).
+    ///
+    /// Direct KVO rather than Combine's KVO publisher: this is the canonical, battle-tested readiness pattern, chosen after the publisher approach failed to restore positions in practice. Must be retained for its lifetime; invalidated & replaced whenever the item is.
+    @State
+    private var itemReadinessObservation: NSKeyValueObservation? = nil
+    
+    /// Opaque token for the player's periodic time observer, held only so registration happens exactly once
+    @State
+    private var periodicTimeObserverToken: Any? = nil
     
     
     // MARK: `View`
@@ -60,6 +90,22 @@ struct MediaPlayerView: View {
                 isPlaying = rate > 0
             }
             .store(in: &sinks)
+            
+            // One observer serves two jobs: reporting position (for session restore) and noticing when the history threshold is crossed. `onAppear` can fire more than once in a view's life, so registration is guarded to happen exactly once.
+            if nil == periodicTimeObserverToken {
+                periodicTimeObserverToken = player.addPeriodicTimeObserver(
+                    forInterval: CMTime(seconds: 0.5, preferredTimescale: 600),
+                    queue: .main
+                ) { [session] time in
+                    MainActor.assumeIsolated {
+                        session.notePlaybackPosition(seconds: time.seconds)
+                        
+                        if time.seconds >= PlayerSession.historyThresholdSeconds {
+                            session.recordCurrentEntryInHistoryIfNeeded()
+                        }
+                    }
+                }
+            }
             
             player.audiovisualBackgroundPlaybackPolicy = .continuesIfPossible
             
@@ -100,64 +146,66 @@ struct MediaPlayerView: View {
 
 
 
+private extension MediaPlayerView {
+    @inline(__always)
+    var currentMediaItem: MediaItem? {
+        currentPlaylist.currentEntry?.mediaItem
+    }
+}
+
+
+
 // MARK: - Older-OS support
 
 private extension MediaPlayerView {
     
     @ViewBuilder
     var baseBodyAndChangeReactions: some View {
-        if #available(iOS 17.0, *) {
-            ZStack {
+        VStack {
+            playerView
+            
+            if !useFullscreenUi {
                 metadataView
-                
-                playerView
-            }
-            
-            
-            .onChange(of: currentMediaUrl) { oldUrl, newUrl in
-                oldUrl?.stopAccessingSecurityScopedResource()
-                prepareNewMedia(from: newUrl)
-            }
-            
-            
-            .onChange(of: isPlaying) { oldValue, isPlaying in
-                guard oldValue != isPlaying else { return }
-                
-                if isPlaying {
-                    player.play()
-                    
-                    UIApplication.shared.beginReceivingRemoteControlEvents()
-                }
-                else {
-                    player.pause()
-                }
             }
         }
-        else {
-            ZStack {
-                metadataView
+        .background(Color(.systemGray6))
+        .background(ignoresSafeAreaEdges: .all)
+        
+        
+        .onChange(of: currentMediaItem, initial: true) { old, new in
+            prepareNewMedia(from: new)
+        }
+        
+        
+        .onChange(of: isPlaying) { oldValue, isPlaying in
+            guard oldValue != isPlaying else { return }
+            
+            if isPlaying {
+                player.play()
                 
-                playerView
+                UIApplication.shared.beginReceivingRemoteControlEvents()
             }
-            
-            
-            .onChange(of: currentMediaUrl) { newUrl in
-                previousMediaUrl?.stopAccessingSecurityScopedResource()
-                defer { previousMediaUrl = newUrl }
-                prepareNewMedia(from: newUrl)
+            else {
+                player.pause()
+                
+                // Pausing is a moment the user implicitly expects their place to be remembered
+                session.saveNowPlayingSnapshotNow()
             }
+        }
+    }
+    
+    
+    private var useFullscreenUi: Bool {
+        switch (width: horizontalSizeClass, height: verticalSizeClass) {
+        case (width: _, height: .none),
+            (width: _, height: .regular):
+            false
             
+        case (width: _, height: .compact):
+            true
             
-            .onChange(of: isPlaying) { isPlaying in
-                if isPlaying {
-                    player.play()
-                    
-                    UIApplication.shared.beginReceivingRemoteControlEvents()
-                }
-                else {
-                    player.pause()
-                }
-            }
+        @unknown default:
+            false
         }
     }
 }
@@ -169,41 +217,36 @@ private extension MediaPlayerView {
     
     var metadataView: some View {
         VStack(alignment: .leading, spacing: 0) {
+            Text(titleText)
+                .font(.largeTitle.weight(.medium))
+                .foregroundStyle(.primary) // not strictly necessary, but I wanted to explicitly call out the relationship to the next Text down
+                .multilineTextAlignment(.leading)
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
+//                .border(.red)
+            
+            Text(creatorText)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.leading)
+                .fixedSize()
+//                .border(.red)
+            
             Spacer(minLength: 0)
                 .layoutPriority(1)
-            
-            Rectangle()
-                .fill(Color.clear)
-                .aspectRatio(16/9, contentMode: .fit)
-                .layoutPriority(1)
-            
-            VStack(alignment: .leading, spacing: 0) {
-                Text(titleText)
-                    .font(.largeTitle.weight(.medium))
-                    .foregroundStyle(.primary) // not strictly necessary, but I wanted to explicitly call out the relationship to the next Text down
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                
-                Text(creatorText)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize()
-                
-                Spacer(minLength: 0)
-                    .layoutPriority(1)
-            }
-            .padding(.horizontal)
-            .layoutPriority(1)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal)
+//        .border(.blue)
     }
     
     
     var playerView: some View {
-        AVMediaPlayer(player: player, pipStatus: $pipStatus)
+        Player(player: player, pipStatus: $pipStatus)
             .aspectRatio(16/9, contentMode: .fit)
+            .frame(maxWidth: .infinity)
+            .layoutPriority(2)
+            .ignoresSafeArea(.container, edges: useFullscreenUi ? .top : [])
     }
 }
 
@@ -212,23 +255,55 @@ private extension MediaPlayerView {
 // MARK: - Responding to the uesr
 
 private extension MediaPlayerView {
-    func prepareNewMedia(from newUrl: URL?) {
+    func prepareNewMedia(from newItem: MediaItem?) {
         
-        currentMediaMetadata = nil
+        currentMediaMetadata = newItem?.metadata
         
-        guard let newUrl else {
+        let shouldResumePlayback = session.takePlaybackIntent()
+        
+        guard let newItem else {
+            itemEndSink = nil
+            itemReadinessObservation?.invalidate()
+            itemReadinessObservation = nil
             player.replaceCurrentItem(with: nil)
             UIApplication.shared.endReceivingRemoteControlEvents()
             return
         }
         
-        guard newUrl.startAccessingSecurityScopedResource() else {
-            print("oops can't")
-            return
-        }
+        let playerItem = AVPlayerItem(newItem)
         
-        player.replaceCurrentItem(with: .init(url: newUrl))
-        player.seek(to: .zero)
+        // Subscribed per-item (with the item as the notification's object) so finishing can never be misattributed to whatever item happens to be current when the notification lands
+        itemEndSink = NotificationCenter.default
+            .publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: playerItem)
+            .map { _ in } // Reduced to Void before crossing queues: the payload isn't needed, and Void is trivially Sendable
+            .receive(on: DispatchQueue.main)
+            .sink {
+                currentItemDidFinishPlaying()
+            }
+        
+        player.replaceCurrentItem(with: playerItem)
+        
+        itemReadinessObservation?.invalidate()
+        itemReadinessObservation = nil
+        
+        if let restoredSeconds = session.takePendingRestoredSeek(forEntryWithID: currentPlaylist.currentEntry?.id) {
+            log(info: "Holding a restored playback position of \(restoredSeconds)s until the item becomes ready")
+            
+            let targetTime = CMTime(seconds: restoredSeconds, preferredTimescale: 600)
+            
+            itemReadinessObservation = playerItem.observe(\.status, options: [.initial, .new]) { item, _ in
+                guard .readyToPlay == item.status else { return }
+                
+                Task { @MainActor in
+                    log(info: "Item is ready; applying the restored playback position")
+                    let seekFinished = await player.seek(to: targetTime, toleranceBefore: .zero, toleranceAfter: .zero)
+                    log(info: "Restored-position seek \(seekFinished ? "completed" : "was interrupted by another seek")")
+                }
+            }
+        }
+        else {
+            player.seek(to: .zero)
+        }
         
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback)
@@ -237,21 +312,43 @@ private extension MediaPlayerView {
             log(error: error)
         }
         
-        
-        Task { [self] in
-            guard let asset = self.player.currentItem?.asset else { return }
-            do {
-                let metadata = try await asset.asyncMetadata()
-                self.currentMediaMetadata = metadata
-                metadata.onMetadataDidUpdate().sink {
-                    forceUpdateBodge.toggle()
-                }
-                .store(in: &sinks)
-            }
-            catch {
-                log(error: error)
-            }
+        if shouldResumePlayback {
+            player.play()
         }
+    }
+    
+    
+    /// The current file played all the way to its end; what happens next is the repeat mode's call.
+    ///
+    /// Also the safety net for the history threshold: a file too short to ever cross ``PlayerSession/historyThresholdSeconds`` earns its history place by finishing instead.
+    func currentItemDidFinishPlaying() {
+        session.recordCurrentEntryInHistoryIfNeeded()
+        
+        switch session.repeatMode {
+        case .currentItem:
+            replayCurrentItemFromStart()
+            
+        case .wholeQueue:
+            if nil != currentPlaylist.moveToNextEntry(wrapping: true) {
+                session.requestPlaybackOnNextLoad()
+            }
+            else {
+                // Wrapping with nowhere else to go (the queue's only playable entry is this one) still means "start over"
+                replayCurrentItemFromStart()
+            }
+            
+        case .off:
+            if nil != currentPlaylist.moveToNextEntry(wrapping: false) {
+                session.requestPlaybackOnNextLoad()
+            }
+            // Otherwise the queue is finished, and the player rests at the end of the final file
+        }
+    }
+    
+    
+    func replayCurrentItemFromStart() {
+        player.seek(to: .zero)
+        player.play()
     }
 }
 
@@ -265,37 +362,36 @@ private extension MediaPlayerView {
     ///
     /// - Parameter key: Identifies the metadata you want
     func metadata<Value>(_ key: AsyncMetadataKey<Value>) -> MetadataSearchResult<Value>? {
-        guard nil != currentMediaUrl else { return nil }
+        guard nil != currentMediaItem else { return nil }
         switch currentMediaMetadata?.get(key) {
-        case nil, .stillSearching: return .stillSearching
-        case .found(let value):    return .found(value: value)
-        case .notFound:            return .notFound
+        case .none:                return .none
+        case .notStarted:          return .notStarted
+        case .loading:             return .loading
+        case .success(let value):  return .success(value)
+        case .failure(let cause):  return .failure(cause)
         }
     }
     
     
     var titleText: LocalizedStringKey {
         switch metadata(.title) {
-        case .stillSearching: "..."
-        case .found(value: let value): "\(value)"
-        case .none: nil == currentMediaUrl ? "Pick something to play :3" : ""
-        case .notFound:
-            if let currentMediaUrl {
-                "\(currentMediaUrl.deletingPathExtension().lastPathComponent)"
-            }
-            else {
-                "Untitled"
-            }
+        case .none: nil == currentMediaItem ? "Pick something to play :3" : ""
+        case .notStarted: "…"
+        case .loading: "⋯"
+        case .success(let value): "\(value)"
+        case .failure(_): // If we ever add more possible error cases than NotFound, this needs updating
+            (currentMediaItem?.autoAccessSecurityScopedResourceUrl.deletingPathExtension().lastPathComponent.nonEmptyOrNil).map { "\($0)" } ?? "Untitled"
         }
     }
     
     
     var creatorText: LocalizedStringKey {
         switch metadata(.creator) {
-        case .stillSearching: "..."
-        case .found(let value): "\(value)"
-        case .notFound: ""
-        case nil: ""
+        case .none: ""
+        case .notStarted: "⋯"
+        case .loading: "…"
+        case .success(let value): "\(value)"
+        case .failure(_): ""
         }
     }
 }
@@ -332,9 +428,17 @@ private extension MediaPlayerView {
     func setupNowPlaying() {
         // Define Now Playing Info
         var nowPlayingInfo = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
-        nowPlayingInfo[MPMediaItemPropertyTitle] = metadata(.title)
+        
+        if let title = ((try? metadata(.title)?.value) ?? nil)
+            ?? currentMediaItem?.autoAccessSecurityScopedResourceUrl.deletingPathExtension().lastPathComponent.nonEmptyOrNil
+        {
+            nowPlayingInfo[MPMediaItemPropertyTitle] = title
+        }
+        else {
+            nowPlayingInfo.removeValue(forKey: MPMediaItemPropertyTitle)
+        }
 
-        if let image = metadata(.image)?.value ?? nil {
+        if let image = try? metadata(.image)?.value ?? nil { //??nil can't believe I still have to battle auto-double-optionals
             nowPlayingInfo[MPMediaItemPropertyArtwork] =
                 MPMediaItemArtwork(boundsSize: image.size) { _ in image }
             
@@ -355,8 +459,8 @@ private extension MediaPlayerView {
 
 // MARK: - Previews
 
-#Preview {
+#Preview("Nothing playing") {
     NavigationStack {
-        MediaPlayerView(currentMediaUrl: .constant(nil))
+        MediaPlayerView(currentPlaylist: .constant(.empty), session: PlayerSession(persisting: false))
     }
 }
