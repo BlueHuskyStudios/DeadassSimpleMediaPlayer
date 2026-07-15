@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+import TipKit
+
+import SimpleLogging
 
 
 
@@ -14,6 +17,18 @@ struct App: SwiftUI.App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .task {
+                    do {
+                        #if DEBUG
+//                        Tips.showAllTipsForTesting()
+                        try Tips.resetDatastore()
+                        #endif
+                        try Tips.configure([.displayFrequency(.monthly)])
+                    }
+                    catch {
+                        log(error: error, "Error initializing TipKit")
+                    }
+                }
         }
     }
 }
