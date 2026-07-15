@@ -25,27 +25,45 @@ public final actor MediaItem: Sendable {
     
     public let autoAccessSecurityScopedResourceUrl: URL
     
+    /// Whether this instance started (and so must stop) its URL's security scope, versus inheriting access from an already-active parent scope. See ``init(url:)``.
+    private let ownsSecurityScope: Bool
+    
     public let metadata: AsyncMetadata?
     
     
-    /// Creates a live item from a URL freshly granted by the system file picker.
+    /// Creates a live item from a URL freshly granted by the system file picker, or enumerated from within an already-opened folder.
     ///
-    /// Fails if the security scope can't be entered, or if the system can't create a bookmark for the file. Bookmark failure is treated as item failure on purpose: it preserves the invariant that every live item is persistable, which keeps every layer above this one simpler than "persistable, usually".
+    /// Fails only if the system can't create a bookmark for the file. Notably, `startAccessingSecurityScopedResource()` returning `false` is *not* failure: children enumerated from a folder whose scope is already active legitimately return `false` (they have no scope token of their own; the parent's covers them), so that result only decides whether this item must call the matching `stop` later. Bookmark failure is treated as item failure on purpose: it preserves the invariant that every live item is persistable, which keeps every layer above this one simpler than "persistable, usually".
+    ///
+    /// Items covered only by a parent folder's scope would stop being readable the moment that scope closes (it only lives as long as the import call) — so such items immediately trade up to standalone access by resolving their own just-created bookmark, which on iOS re-grants access in its own right.
     init?(url: URL) async {
-        guard url.startAccessingSecurityScopedResource() else {
-            log(error: "Failed to access the media item as a security-scoped resource: \(url)")
-            return nil
-        }
+        var url = url
+        var ownsSecurityScope = url.startAccessingSecurityScopedResource()
         
+        let reference: MediaReference
         do {
-            self.reference = try MediaReference(bookmarking: url)
+            reference = try MediaReference(bookmarking: url)
         }
         catch {
             log(error: error)
-            url.stopAccessingSecurityScopedResource()
+            if ownsSecurityScope {
+                url.stopAccessingSecurityScopedResource()
+            }
             return nil
         }
         
+        if !ownsSecurityScope {
+            if let (standaloneUrl, _) = try? reference.resolve() {
+                ownsSecurityScope = standaloneUrl.startAccessingSecurityScopedResource()
+                url = standaloneUrl
+            }
+            else {
+                log(warning: "Couldn't gain standalone access to \(reference.filename); it will only be playable while its folder's access lasts")
+            }
+        }
+        
+        self.reference = reference
+        self.ownsSecurityScope = ownsSecurityScope
         self.autoAccessSecurityScopedResourceUrl = url
         self.metadata = await Self.extractMetadata(from: url)
     }
@@ -65,10 +83,8 @@ public final actor MediaItem: Sendable {
             return nil
         }
         
-        guard url.startAccessingSecurityScopedResource() else {
-            log(error: "Failed to access the media item as a security-scoped resource: \(url)")
-            return nil
-        }
+        // Not a guard: on iOS, resolving the bookmark is itself what re-grants access — the system can report `false` here even when the file is perfectly readable — so this result only decides whether this item must call the matching `stop` later. Resolution throwing (above) is the real access-failure signal.
+        let ownsSecurityScope = url.startAccessingSecurityScopedResource()
         
         var bestReference = reference
         if isStale,
@@ -79,12 +95,14 @@ public final actor MediaItem: Sendable {
         bestReference.filename = url.lastPathComponent // The file may have been renamed since we last saw it
         
         self.reference = bestReference
+        self.ownsSecurityScope = ownsSecurityScope
         self.autoAccessSecurityScopedResourceUrl = url
         self.metadata = await Self.extractMetadata(from: url)
     }
     
     
     deinit {
+        guard ownsSecurityScope else { return }
         autoAccessSecurityScopedResourceUrl.stopAccessingSecurityScopedResource()
     }
     

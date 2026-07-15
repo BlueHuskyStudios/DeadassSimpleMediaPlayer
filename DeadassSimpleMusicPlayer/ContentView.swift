@@ -60,7 +60,7 @@ struct ContentView: View {
                     switch result {
                     case .success(let openedUrl):
                         Task {
-                            let newEntries = await Playlist.entries(fromUrl: openedUrl)
+                            let newEntries = await Playlist.entries(fromUrl: openedUrl, allowRecursion: true)
                             session.queue.append(contentsOf: newEntries)
                             
                             // A quiet background courtesy, after the music's already going: files sharing album metadata become an album playlist

@@ -48,8 +48,10 @@ public extension FileManager {
         if let contentTypes,
            !contentTypes.isEmpty
         {
+            // Conformance, not equality: `contentTypes` holds broad categories (.audiovisualContent, .directory), but
+            // each item's own type is concrete (.mp3, .folder)
             rootUrls = rootUrls
-                .filter { contentTypes.contains($0.contentType) }
+                .filter { url in contentTypes.contains(where: { url.conforms(to: $0) }) }
         }
         
         if recursive {

@@ -3,7 +3,7 @@
 //  DeadassSimpleMusicPlayer
 //
 //  Created by Ky on 2024-07-13.
-//  Some notable changes by Claude 5 Fable on 2026-07-01.
+//  Some notable changes by Claude 5 Fable since 2026-07-01.
 //
 
 import AsyncAlgorithms
@@ -372,13 +372,19 @@ public extension Playlist {
                 }
                 
                 do {
-                    return try await fileManager
+                    let entries = try await fileManager
                         .contentsOfDirectory(at: url, contentTypes: allowedContentTypes, recursive: allowRecursion)
                         .async
-                        .compactMap { url in
-                            await MediaItem(url: url).map { Entry($0) }
+                        .compactMap { url -> Entry? in
+                            // Non-recursive listings include subfolders by contract; a folder must never become a
+                            // "playable" queue entry
+                            guard !fileManager.isDirectory(at: url) else { return nil }
+                            return await MediaItem(url: url).map { Entry($0) }
                         }
                         .collect()
+                    
+                    log(info: "Built \(entries.count) queue entries from the folder \(url.lastPathComponent)")
+                    return entries
                 }
                 catch {
                     log(error: error)
