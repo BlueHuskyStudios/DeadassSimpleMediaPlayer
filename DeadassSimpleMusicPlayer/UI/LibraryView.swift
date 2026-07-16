@@ -105,7 +105,12 @@ struct LibraryView: View {
                     case .history:
                         retentionMenu
                         
-                        ClearHistoryButton(session: session)
+                        ConfirmationGatedButton(
+                            "Clear history", systemImage: "trash",
+                            confirmationMessage: "Clear all play history?")
+                        {
+                            session.clearHistory()
+                        }
                     }
                 }
             }
@@ -134,7 +139,7 @@ struct LibraryView: View {
 
 
 
-// MARK: - Queue tab
+// MARK: - Now Playing tab
 
 private extension LibraryView {
     
@@ -181,11 +186,23 @@ private extension LibraryView {
                     TipView(RepeatButtonTip(), arrowEdge: .top, anchorID: Self.repeatModeButtonAnchorId)
                         .listRowBackground(EmptyView())
                 } footer: {
-                    if session.queue.isShuffled {
-                        Text("Shuffling is temporary! You can reorder songs, but they'll be returned to the same unshuffled order when you unshuffle.")
+                    VStack {
+                        if session.queue.isShuffled {
+                            Text("Shuffling is temporary! You can reorder songs, but they'll be returned to the same unshuffled order when you unshuffle.")
+                        }
                     }
                 }
                 .headerProminence(.increased)
+                
+                Section {
+                    ConfirmationGatedButton("Clear queue", confirmationMessage: "Remove everything from the Now Playing queue?") {
+                        session.queue.removeAll()
+                    }
+                } footer: {
+                    VStack {
+                        Spacer(minLength: 40)
+                    }
+                }
             }
         }
     }
@@ -623,29 +640,6 @@ private extension LibraryView {
             case .pastWeek:          "Delete after a week"
             case .pastYear:          "Delete after a year"
             case .hundredMostRecent: "Only remember 100 recent plays"
-            }
-        }
-    }
-}
-
-
-
-/// The confirmation-gated "Clear History" control, in its own type so its dialog state stays local
-private struct ClearHistoryButton: View {
-    
-    let session: PlayerSession
-    
-    @State
-    private var isConfirming = false
-    
-    
-    var body: some View {
-        Button("Clear History", systemImage: "trash", role: .destructive) {
-            isConfirming = true
-        }
-        .confirmationDialog("Clear all play history?", isPresented: $isConfirming, titleVisibility: .visible) {
-            Button("Clear History", role: .destructive) {
-                session.clearHistory()
             }
         }
     }

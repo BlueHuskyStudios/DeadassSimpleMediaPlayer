@@ -236,6 +236,13 @@ public extension Playlist {
     }
     
     
+    mutating func removeAll() {
+        entries.removeAll()
+        currentEntryID = nil
+        playbackOrder = nil
+    }
+    
+    
     /// Reorders the *presented* order, using the offset semantics SwiftUI's `onMove(perform:)` supplies.
     ///
     /// Which order that is depends on shuffle state, matching what the user is looking at when they drag: un-shuffled, this rearranges the user-specified ``entries`` order (durable, saved into playlists); shuffled, it rearranges only the ephemeral ``playbackOrder`` — dragging rows around a shuffled queue never rewrites the order the user curated.
