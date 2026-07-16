@@ -576,9 +576,7 @@ private extension LibraryView {
                                     .foregroundStyle(.secondary)
                             }
                             
-                            Rectangle()
-                                .fill(Color(.systemGroupedBackground).opacity(0.001))
-                                .layoutPriority(-1)
+                            TappableSpacer()
                         }
                     }
                     .buttonStyle(.plain)
@@ -680,9 +678,7 @@ private struct QueueEntryRow: View {
                 }
             }
             
-            Rectangle()
-                .fill(Color(.systemGroupedBackground).opacity(0.001))
-                .layoutPriority(-1)
+            TappableSpacer()
         }
         .opacity(entry.isPlayable ? 1 : 0.75)
         
@@ -718,7 +714,7 @@ private struct SavedPlaylistRow: View {
             Text(playlist.name)
                 .lineLimit(1)
             
-            Spacer(minLength: 0)
+            TappableSpacer(minLength: 0)
             
             Text("^[\(playlist.items.count) item](inflect: true)")
                 .font(.caption)
