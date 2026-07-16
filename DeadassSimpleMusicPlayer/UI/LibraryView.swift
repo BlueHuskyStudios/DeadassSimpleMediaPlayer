@@ -186,10 +186,8 @@ private extension LibraryView {
                     TipView(RepeatButtonTip(), arrowEdge: .top, anchorID: Self.repeatModeButtonAnchorId)
                         .listRowBackground(EmptyView())
                 } footer: {
-                    VStack {
-                        if session.queue.isShuffled {
-                            Text("Shuffling is temporary! You can reorder songs, but they'll be returned to the same unshuffled order when you unshuffle.")
-                        }
+                    if session.queue.isShuffled {
+                        Text("Shuffling is temporary! You can reorder songs, but they'll be returned to the same unshuffled order when you unshuffle.")
                     }
                 }
                 .headerProminence(.increased)
