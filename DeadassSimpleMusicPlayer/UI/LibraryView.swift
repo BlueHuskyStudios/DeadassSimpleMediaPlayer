@@ -105,7 +105,12 @@ struct LibraryView: View {
                     case .history:
                         retentionMenu
                         
-                        ClearHistoryButton(session: session)
+                        ConfirmationGatedButton(
+                            "Clear history", systemImage: "trash",
+                            confirmationMessage: "Clear all play history?")
+                        {
+                            session.clearHistory()
+                        }
                     }
                 }
             }
@@ -134,7 +139,7 @@ struct LibraryView: View {
 
 
 
-// MARK: - Queue tab
+// MARK: - Now Playing tab
 
 private extension LibraryView {
     
@@ -186,6 +191,16 @@ private extension LibraryView {
                     }
                 }
                 .headerProminence(.increased)
+                
+                Section {
+                    ConfirmationGatedButton("Clear queue", confirmationMessage: "Remove everything from the Now Playing queue?") {
+                        session.queue.removeAll()
+                    }
+                } footer: {
+                    VStack {
+                        Spacer(minLength: 40)
+                    }
+                }
             }
         }
     }
@@ -559,9 +574,7 @@ private extension LibraryView {
                                     .foregroundStyle(.secondary)
                             }
                             
-                            Rectangle()
-                                .fill(Color(.systemGroupedBackground).opacity(0.001))
-                                .layoutPriority(-1)
+                            TappableSpacer()
                         }
                     }
                     .buttonStyle(.plain)
@@ -630,29 +643,6 @@ private extension LibraryView {
 
 
 
-/// The confirmation-gated "Clear History" control, in its own type so its dialog state stays local
-private struct ClearHistoryButton: View {
-    
-    let session: PlayerSession
-    
-    @State
-    private var isConfirming = false
-    
-    
-    var body: some View {
-        Button("Clear History", systemImage: "trash", role: .destructive) {
-            isConfirming = true
-        }
-        .confirmationDialog("Clear all play history?", isPresented: $isConfirming, titleVisibility: .visible) {
-            Button("Clear History", role: .destructive) {
-                session.clearHistory()
-            }
-        }
-    }
-}
-
-
-
 // MARK: - Rows
 
 /// One queue slot: a now-playing indicator, the media's best-known name, and (when relevant) why it can't play.
@@ -686,9 +676,7 @@ private struct QueueEntryRow: View {
                 }
             }
             
-            Rectangle()
-                .fill(Color(.systemGroupedBackground).opacity(0.001))
-                .layoutPriority(-1)
+            TappableSpacer()
         }
         .opacity(entry.isPlayable ? 1 : 0.75)
         
@@ -724,7 +712,7 @@ private struct SavedPlaylistRow: View {
             Text(playlist.name)
                 .lineLimit(1)
             
-            Spacer(minLength: 0)
+            TappableSpacer(minLength: 0)
             
             Text("^[\(playlist.items.count) item](inflect: true)")
                 .font(.caption)
