@@ -217,7 +217,7 @@ private extension MediaPlayerView {
     
     var metadataView: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(titleText)
+            titleView
                 .font(.largeTitle.weight(.medium))
                 .foregroundStyle(.primary) // not strictly necessary, but I wanted to explicitly call out the relationship to the next Text down
                 .multilineTextAlignment(.leading)
@@ -373,20 +373,34 @@ private extension MediaPlayerView {
     }
     
     
-    var titleText: LocalizedStringKey {
-        switch metadata(.title) {
-        case .none: nil == currentMediaItem ? "Pick something to play :3" : ""
-        case .notStarted: "…"
-        case .loading: "⋯"
-        case .success(let value): "\(value)"
-        case .failure(_): // If we ever add more possible error cases than NotFound, this needs updating
-            (currentMediaItem?.autoAccessSecurityScopedResourceUrl.deletingPathExtension().lastPathComponent.nonEmptyOrNil).map { "\($0)" } ?? "Untitled"
+    @ViewBuilder
+    var titleView: some View {
+        if let loadingMessage = session.loadingMessage {
+            HStack {
+                ProgressView()
+                Text(LocalizedStringKey(loadingMessage.key))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        else {
+            Text({
+                switch metadata(.title) {
+                case .none: nil == currentMediaItem ? "Pick something to play :3" : ""
+                case .notStarted: "…"
+                case .loading: "⋯"
+                case .success(let value): "\(value)"
+                case .failure(_): // If we ever add more possible error cases than NotFound, this needs updating
+                    (currentMediaItem?.autoAccessSecurityScopedResourceUrl.deletingPathExtension().lastPathComponent.nonEmptyOrNil).map { "\($0)" } ?? "Untitled"
+                }
+            }())
         }
     }
     
     
     var creatorText: LocalizedStringKey {
-        switch metadata(.creator) {
+        guard nil == session.loadingMessage else { return "" }
+        
+        return switch metadata(.creator) {
         case .none: ""
         case .notStarted: "⋯"
         case .loading: "…"
