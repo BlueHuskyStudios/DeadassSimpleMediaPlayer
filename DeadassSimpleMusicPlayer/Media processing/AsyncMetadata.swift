@@ -161,9 +161,12 @@ public extension AsyncMetadata {
 
 
 public extension AsyncMetadata.RetrievalApproach where Value == Int {
-    static let stringToInt: Self = loadDataValue { rawData in
-        guard let string = String(data: rawData, encoding: .utf8) else { return nil }
-        let filtered = string.filter { CharacterSet.decimalDigits.contains($0.unicodeScalars.first!) }
+    static let stringToInt: Self = parseLoadedValue { unparsedData in
+        guard let string = unparsedData as? String else { return nil }
+        let filtered = string
+            .prefix(while: { "/" != $0 })
+            .filter { CharacterSet.decimalDigits.contains($0.unicodeScalars.first!) }
+        
         return Int(filtered)
     }
 }
@@ -171,9 +174,18 @@ public extension AsyncMetadata.RetrievalApproach where Value == Int {
 
 
 public extension AsyncMetadata.RetrievalApproach where Value == DateComponents {
-    static let stringToDateComponents: Self = loadDataValue { rawData in
-        guard let string = String(data: rawData, encoding: .utf8) else { return nil }
+    static let stringToDateComponents: Self = parseLoadedValue { unparsedData in
+        guard let string = unparsedData as? String else { return nil }
+        if nil != string.firstMatch(of: /^\d{4}$/) { return DateComponents(year: Int(string)) }
         return try? DateComponents(string, strategy: .iso8601)
+    }
+}
+
+
+
+public extension AsyncMetadata.RetrievalApproach where Value == UIImage {
+    static let dataToUiImage: Self = loadDataValue { unparsedData in
+        UIImage(data: unparsedData)
     }
 }
 
@@ -254,7 +266,7 @@ public extension AsyncMetadataKey where Value == Int {
 public extension AsyncMetadataKey where Value == NativeImage {
     
     /// The media's cover art (or thumbnail, or attached picture).
-    static let image = Self(id: "image", identifiers: [
+    static let image = Self(id: "image", retrievalApproach: .dataToUiImage, identifiers: [
         .identifier3GPUserDataThumbnail,
         .iTunesMetadataCoverArt,
         .id3MetadataAttachedPicture,
