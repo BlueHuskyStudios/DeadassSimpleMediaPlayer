@@ -463,9 +463,11 @@ private extension MediaPlayerView {
 //        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = player.rate
 
         // Set the metadata
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
-        
-        forceUpdateBodge.toggle()
+        Task { @MainActor in
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+            
+            forceUpdateBodge.toggle()
+        }
     }
 }
 

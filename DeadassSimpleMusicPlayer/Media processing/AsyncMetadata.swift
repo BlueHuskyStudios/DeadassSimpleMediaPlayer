@@ -266,7 +266,7 @@ public extension AsyncMetadataKey where Value == Int {
 public extension AsyncMetadataKey where Value == NativeImage {
     
     /// The media's cover art (or thumbnail, or attached picture).
-    static let image = Self(id: "image", retrievalApproach: .dataToUiImage, identifiers: [
+    static let image = Self(id: "image", /*retrievalApproach: .dataToUiImage,*/ identifiers: [ // TODO: This is where we will fix #16, but uncommenting this right now causes crash-on-load. Postponing for its own branch – Ky, 2026-08-07
         .identifier3GPUserDataThumbnail,
         .iTunesMetadataCoverArt,
         .id3MetadataAttachedPicture,
