@@ -106,12 +106,13 @@ public struct AsyncMetadataKey<Value: Sendable>: Identifiable, Sendable {
     /// Uniquely identifies this key amongst all other `AsyncMetadataKey`s
     public let id: Id
     
+    /// The loading/parsing approach that will be used when retrieving metadata associated with this key
+    public var retrievalApproach: AsyncMetadata.RetrievalApproach<Value> = .justLoadValue
+    
     /// The AVKit metadata identifiers which correspond to this key, sorted with the most-preferred first.
     ///
     /// This allows one key to map to many different metadata values in order of preference (e.g. common track title vs iTunes song name vs QuickTime user-specified track name vs etc...)
     public let identifiers: [AVMetadataIdentifier]
-    
-    public let retrievalApproach: AsyncMetadata.RetrievalApproach<Value> = .justLoadValue
 }
 
 
@@ -123,6 +124,14 @@ public struct AsyncMetadataIdSpecialType: SpecialStringSpecialType, Sendable {}
 
 public extension AsyncMetadataKey {
     typealias Id = AsyncMetadataKeyId
+}
+
+
+
+extension AsyncMetadataKey: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        id.withoutTypeSafety()
+    }
 }
 
 
@@ -141,12 +150,50 @@ public extension AsyncMetadata {
         /// Just directly loads the value with ``AVMetadataItem.load(_:)`` ``AVPartialAsyncProperty.value`` and attempts to cast it to `Value`
         case justLoadValue
         
-        /// Loads the value with ``AVMetadataItem.load(_:)`` ``AVPartialAsyncProperty.dataValue``, and then sends that `Data` to the given function
-        case loadDataValue(initializer: @Sendable (Data) -> Value)
+        /// Loads the value with ``AVMetadataItem.load(_:)`` ``AVPartialAsyncProperty.value``, and then sends that value to the given function, which might return `nil` if conversion failed
+        case parseLoadedValue(initializer: @Sendable (Any) -> Value?)
         
-//        case loadSomethingElse(AVPartialAsyncProperty)
+        /// Loads the value with ``AVMetadataItem.load(_:)`` ``AVPartialAsyncProperty.dataValue``, and then sends that `Data` to the given function, which might return `nil` if conversion failed
+        case loadDataValue(initializer: @Sendable (Data) -> Value?)
     }
 }
+
+
+
+public extension AsyncMetadata.RetrievalApproach where Value == Int {
+    /// Assumes the metadata is a string which represents an integer, and parses it as such.
+    ///
+    /// The current implementation only supports ASCII digits (`0123456789`); other scripts aren't yet supported (e.g. if the track number is `٣` then this returns `nil`).
+    static let stringToInt: Self = parseLoadedValue { unparsedData in
+        guard let string = unparsedData as? String,
+              let found = string.firstMatch(of: /(?:\d|[., '])+/.asciiOnlyDigits())?.output
+        else { return nil }
+        let filtered = found.filter({ ("0"..."9").contains($0) })
+        return Int(filtered)
+    }
+}
+
+
+
+public extension AsyncMetadata.RetrievalApproach where Value == DateComponents {
+    /// Assumes the metadata is a string which represent a date, and parses it as a `DateComponents`.
+    ///
+    /// The current implementation only supports ISO-8601 dates or a bare year
+    static let stringToDateComponents: Self = parseLoadedValue { unparsedData in
+        guard let string = unparsedData as? String else { return nil }
+        if nil != string.firstMatch(of: /^\d{4}$/) { return DateComponents(year: Int(string)) }
+        return try? DateComponents(string, strategy: .iso8601)
+    }
+}
+
+
+
+//#16: this will be used soon, but the implementation below crashes for some reason – Ky, 2026-08-08
+//public extension AsyncMetadata.RetrievalApproach where Value == UIImage {
+//    static let dataToUiImage: Self = loadDataValue { unparsedData in
+//        UIImage(data: unparsedData)
+//    }
+//}
 
 
 // MARK: Default keys
@@ -205,13 +252,49 @@ public extension AsyncMetadataKey where Value == String {
 
 
 
-public extension AsyncMetadataKey where Value == NativeImage? {
+public extension AsyncMetadataKey where Value == Int {
+    
+    /// Which disc the track is on within its album (e.g. `3` from a tag written as "3" or "3/4").
+    static let discNumber = Self(id: "discNumber", retrievalApproach: .stringToInt, identifiers: [
+        .iTunesMetadataDiscNumber,
+    ])
+    
+    /// The track's position within its album (e.g. `3` from a tag written as "3" or "3/12").
+    static let trackNumber = Self(id: "trackNumber", retrievalApproach: .stringToInt, identifiers: [
+        .id3MetadataTrackNumber,
+        .init("id3/TRCK"), // Why isn't this in Apple's presets 😭
+        .iTunesMetadataTrackNumber,
+    ])
+}
+
+
+
+public extension AsyncMetadataKey where Value == NativeImage {
     
     /// The media's cover art (or thumbnail, or attached picture).
-    static let image = Self(id: "image", identifiers: [
+    static let image = Self(id: "image", /*retrievalApproach: .dataToUiImage,*/ identifiers: [ // TODO: This is where we will fix #16, but uncommenting this right now causes crash-on-load. Postponing for its own branch – Ky, 2026-08-07
         .identifier3GPUserDataThumbnail,
         .iTunesMetadataCoverArt,
         .id3MetadataAttachedPicture,
+    ])
+}
+
+
+
+public extension AsyncMetadataKey where Value == DateComponents {
+    
+    /// The date when this was originally published, regardless of when the file was created.
+    ///
+    /// This may be as coarse as just the year component, which is why this decodes as components instead of a `Date` value.
+    static let publishedDate = Self(id: "publishedDate", retrievalApproach: .stringToDateComponents, identifiers: [
+        .commonIdentifierCreationDate,
+        .iTunesMetadataReleaseDate,
+        .id3MetadataRecordingDates,
+        
+        .identifier3GPUserDataRecordingYear,
+        .quickTimeMetadataYear,
+        .id3MetadataOriginalReleaseYear,
+        .id3MetadataYear,
     ])
 }
 
@@ -355,23 +438,67 @@ private extension AsyncMetadata {
         in assetMetadata: [AVMetadataItem],
         matching key: Key<Value>
     ) async throws -> (any Sendable)? {
-        guard let desiredMetadata = assetMetadata.first(where: { item in
+        //let uuid = "\(key): \(UUID())"
+        //print(uuid, "Entering"); defer { print(uuid, "Exiting") }
+        
+        let theSearchForDesiredMetadata = assetMetadata.first(where: { item in
             guard let identifier = item.identifier else { return false }
             return key.identifiers.contains(identifier)
         })
-        else {
+        //print(uuid, "nil != \(key.id):", nil != theSearchForDesiredMetadata)
+        guard let desiredMetadata = theSearchForDesiredMetadata else {
+            //print(uuid, "Desired metadata not found")
+            //print(uuid, "nil == \(key.id):", nil == theSearchForDesiredMetadata)
             return nil
         }
         
-        guard let rawValue = try await desiredMetadata.load(.value) else {
-            return nil
+        let typedValue: Value
+        
+        switch key.retrievalApproach {
+        case .justLoadValue:
+            //print(uuid, "Getting rawValue")
+            guard let rawValue = try await desiredMetadata.load(.value) else {
+                log(warning: "Raw value not found for \(key.id)")
+                return nil
+            }
+            
+            print(uuid, "Getting typedValue")
+            guard let _typedValue = rawValue as? Value else {
+                log(warning: "Raw value found for \(key.id), but was of type \(type(of: rawValue)), which couldn't be converted to \(Value.self)")
+                return nil
+            }
+            typedValue = _typedValue
+            
+        case .loadDataValue(let initializer):
+            //print(uuid, "Getting dataValue")
+            guard let dataValue: Data = try await desiredMetadata.load(.dataValue) else {
+                log(warning: "Data value not found for \(key.id)")
+                return nil
+            }
+            
+            //print(uuid, "Initializing typedValue")
+            guard let _typedValue = initializer(dataValue) else {
+                log(warning: "Data value found for \(key.id), but couldn' convert it to \(Value.self)")
+                return nil
+            }
+            typedValue = _typedValue
+            
+        case .parseLoadedValue(initializer: let initializer):
+            //print(uuid, "Loading rawValue")
+            guard let rawValue = try await desiredMetadata.load(.value) else {
+                log(warning: "Unparsed value not found for \(key.id)")
+                return nil
+            }
+            
+            //print(uuid, "Parsing rawValue")
+            guard let _typedValue = initializer(rawValue) else {
+                log(warning: "Raw value found for \(key.id), but was of type \(type(of: rawValue)), which couldn't be converted to \(Value.self)")
+                return nil
+            }
+            typedValue = _typedValue
         }
         
-        guard let typedValue = rawValue as? Value else {
-            log(warning: "Raw value found, but was of type \(type(of: rawValue)), which couldn't be converted to \(Value.self)")
-            return nil
-        }
-        
+        //print(uuid, "Returning typedValue")
         return typedValue as any Sendable
     }
 }

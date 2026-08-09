@@ -26,6 +26,7 @@ Some of it was written using LLMs, either directly writing it or advising it, in
 - Apple Foundation Models
 
 Commits with notable LLM usage are marked as "Co-authored by" those LLMs, because transparency matters.
+Files written with notable LLM usage are marked as "Written by Ky directing <LLM>" or similar, because _transparency fucking matters._ 
 
 None of these LLMs were given direct access to the repo.
 None of the code was accepted blindly; check the PRs for proof. **Fuck vibe coding.**

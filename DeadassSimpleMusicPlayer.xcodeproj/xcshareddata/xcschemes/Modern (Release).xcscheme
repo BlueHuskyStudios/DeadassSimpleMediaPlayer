@@ -17,6 +17,7 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "B9B6F0D72C1511390093BAED"
                BuildableName = "Dead-Simple Media Player.app"
+               BlueprintName = "Dead-Simple Media Player"
                ReferencedContainer = "container:DeadassSimpleMusicPlayer.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -46,6 +47,7 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "B9B6F0D72C1511390093BAED"
             BuildableName = "Dead-Simple Media Player.app"
+            BlueprintName = "Dead-Simple Media Player"
             ReferencedContainer = "container:DeadassSimpleMusicPlayer.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

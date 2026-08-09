@@ -390,8 +390,10 @@ public extension Playlist {
                         }
                         .collect()
                     
-                    log(info: "Built \(entries.count) queue entries from the folder \(url.lastPathComponent)")
-                    return entries
+                    let sortedEntries = await entries.autoSorted()
+                    
+                    log(info: "Built \(sortedEntries.count) queue entries from the folder \(url.lastPathComponent)")
+                    return sortedEntries
                 }
                 catch {
                     log(error: error)
@@ -419,6 +421,96 @@ public extension Playlist {
     
     
     static let defaultAllowedContentTypes: Set<UTType> = [.audiovisualContent, .directory, .folder]
+}
+
+
+
+// MARK: - Sorting a fresh folder import
+
+private extension [Playlist.Entry] {
+    
+    /// Orders freshly-built entries the way opening an album's folder should read: by album, then track number, then file type, then how recently the file was created — so playback starts in the right order the instant the folder opens, with nothing to reorder later.
+    ///
+    /// Awaits every entry's album and track-number metadata before returning, on purpose: a folder import is a "load this now" action, not a background task the user might check on later, so the wait belongs here rather than being deferred and felt as playback starting in the wrong order.
+    ///
+    /// Missing keys always sort after present ones — a file with no album metadata reads as "comes after every real album," not as "first alphabetically" (which `nil` would otherwise do by accident).
+    func autoSorted() async -> Self {
+        var keyed: [(entry: Element, key: SortKey)] = []
+        keyed.reserveCapacity(self.count)
+        
+        for entry in self {
+            keyed.append((entry: entry, key: await SortKey(describing: entry)))
+        }
+        
+        return keyed
+            .sorted { $0.key < $1.key }
+            .map(\.entry)
+    }
+    
+    
+    
+    /// What a folder-imported entry sorts by, most significant first. Comparing two of these is the whole ordering policy for a folder import — see ``Optional/isOrderedBefore(_:)`` for how each field treats "unknown" as "last."
+    struct SortKey: Comparable {
+        var album: String?
+        var trackNumber: Int?
+        var contentType: UTType
+        var publishedDate: DateComponents?
+        var fileName: String
+        
+        
+        init(describing entry: Element) async {
+            if let metadata = entry.mediaItem?.metadata {
+                self.album = (try? await metadata.get(.album))?.nonEmptyOrNil
+                self.trackNumber = try? await metadata.get(.trackNumber)
+                self.publishedDate = try? await metadata.get(.publishedDate)
+            }
+            else {
+                self.album = nil
+                self.trackNumber = nil
+                self.publishedDate = nil
+            }
+            
+            self.contentType = entry.mediaItem?.autoAccessSecurityScopedResourceUrl.contentType ?? .audiovisualContent
+            
+            self.fileName = entry.reference.filename
+        }
+        
+        
+        static func < (lhs: Self, rhs: Self) -> Bool {
+            if lhs.album != rhs.album {
+                lhs.album.isOrderedBefore(rhs.album) { $0.localizedStandardCompare($1) == .orderedAscending }
+            }
+            else if lhs.trackNumber != rhs.trackNumber {
+                lhs.trackNumber.isOrderedBefore(rhs.trackNumber, areInIncreasingOrder: <)
+            }
+            else if lhs.contentType != rhs.contentType {
+                lhs.contentType.identifier < rhs.contentType.identifier
+            }
+            else if lhs.publishedDate != rhs.publishedDate {
+                lhs.publishedDate.isOrderedBefore(rhs.publishedDate, areInIncreasingOrder: <)
+            }
+            else {
+                lhs.fileName < rhs.fileName
+            }
+        }
+    }
+}
+
+
+
+private extension Optional where Wrapped: Equatable {
+    
+    /// Orders two optionals by `areInIncreasingOrder` when both have a value, treating `nil` as "comes after everything" rather than the default Comparable-adjacent behavior of sorting `nil` first.
+    ///
+    /// A missing album or track number should read as "at the end," not "first alphabetically."
+    func isOrderedBefore(_ other: Self, areInIncreasingOrder: (Wrapped, Wrapped) -> Bool) -> Bool {
+        switch (self, other) {
+        case (nil, nil):                   false
+        case (nil, .some):                 false
+        case (.some, nil):                 true
+        case (.some(let a), .some(let b)): areInIncreasingOrder(a, b)
+        }
+    }
 }
 
 
