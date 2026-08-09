@@ -26,6 +26,11 @@ import SimpleLogging
 @Observable
 public final class PlayerSession {
     
+    /// A human-readable description of whatever's currently loading (restoring last session, importing a folder, ...), or `nil` when nothing is.
+    ///
+    /// Shared infrastructure: any long-running operation that should keep the "what's playing" screen from showing its empty state prematurely runs through ``withLoadingMessage(_:perform:)`` instead of setting this directly, so overlapping operations can't stomp on each other's message.
+    public private(set) var loadingMessage: LocalizedStringResource? = nil
+    
     /// The now-playing queue. Mutate freely (including through SwiftUI bindings); persistence reacts automatically.
     public var queue: Playlist = .empty {
         didSet {
@@ -132,6 +137,108 @@ public extension PlayerSession {
         
         guard let playerStore else { return }
         
+        loadingMessage = [
+            // By people:
+            "Reticulating splines…",
+            "Gimme sec…",
+            "Hang on…",
+            "Uhhhhhhhh…",
+            "Where did I leave the music…",
+            "Where did I leave the movies…",
+            "Where did I leave the shoes…",
+            "Where did I leave the videos…",
+            "Where did I leave the files…",
+            "…",
+            "Lemme get uhhhhh…",
+            "𝔗𝔥𝔢…",
+            "Preparing to load…",
+            "Loading…",
+            "Loading preparation…",
+            "Hacking the planet…",
+            "Curing cancer real quick…",
+            "🥕…",
+            "Wiping fingerprints off CD…",
+            "Tuning stereo…",
+            "Adjusting tracking…",
+            "Flipping to Side B…",
+            "Renoising…",
+            "I'll be there in a sec…",
+            "When was it due…",
+            "Dusting records…",
+            "Loading vocoder?…",
+            "?…",
+            "Honey, where are my pants…",
+            "Daisy, Daisy…",
+            "Recalculating route…",
+            "Recalcitrating splines…",
+            "Spilling popcorn…",
+            "Blowing in cartridge…",
+            "ignoring The Cloud…",
+            "Waxing cylinders…",
+            "Waxing poetic…",
+            "I'll have two #9s…",
+            "Animating hills…",
+            "Pirating music…",
+            "Pirating movies…",
+            "Pirating shoes…",
+            "Pirating anime…",
+            "Pirating \"anime\"…",
+            "Pirating Weird Al's \"Don't Download This Song\"…",
+            "Pirating K-Pop…",
+            "Pirating A-Pop…",
+            "Loading slower…",
+            "Loading faster…",
+            "Normalizing oddities…",
+            "Deciding what to display next…",
+            "Loading loading messages…",
+            "Messaging loading message loader…",
+            "Counting songs…",
+            "Discounting songs…",
+            "Bypassing…",
+            "Ranking music…",
+            "Calling a librarian…",
+            "Drawing a furry…",
+            "Inventing genres…",
+            "Pretending…",
+            "Hear me out…",
+            "Gesticulating mimes…",
+            "[Loading, in Spanish…]",
+            "Stirring genetic pool…",
+            "Confounding an AI…",
+            "Low ding…",
+            "Obfuscating quigly matrix…",
+            "Finishing random walk…",
+            "Activating god mode…",
+            "Becoming dumber…",
+            "Searching for llamas…",
+            "Looking for remote…",
+            "Playing infrasound…",
+            "Playing God…",
+            "Playing Dog…",
+            "Learning about filetypes…",
+            "Losing keys…",
+            "Defying gravity…",
+            "Almost done…",
+            "Almost Dunn…",
+            "Lemme just scootch past ya…",
+            "Eating cookies…",
+            "Untangling AirPods…",
+            "Sorting randomness…",
+            "Switching…",
+            "Dissociating…",
+            "Integrating…",
+            
+            // By Claude:
+            "Consulting elders…",
+            "Downloading more RAM…",
+            "Untangling headphones…",
+            "Rolling for initiative…",
+            "Doing crimes…",
+            "Touching grass…",
+            "Turning it off and on again…",
+        ].randomElement() ?? "Loading..."
+        defer { loadingMessage = nil }
+        
         // All the slow, suspending work happens into locals first; assignment at the bottom is synchronous, so the `isRestoring` gate can't accidentally swallow a save for some unrelated mutation which interleaves with a suspension here
         
         var restoredQueue: Playlist? = nil
@@ -204,6 +311,29 @@ public extension PlayerSession {
         }
         
         return pending.seconds
+    }
+}
+
+
+
+// MARK: - Loading indication
+
+public extension PlayerSession {
+    
+    /// Runs `work` while ``loadingMessage`` reports `message`, restoring whatever ``loadingMessage`` was before (not necessarily `nil`) once `work` finishes.
+    /// 
+    /// The "restore the previous value" behavior (rather than unconditionally clearing) is what lets two loading operations overlap without one's completion silently erasing the other's still-in-progress message — e.g. a folder import that finishes quickly while session restore is still running.
+    ///
+    /// - Parameters:
+    ///   - message: Shown to the user until `work`returns
+    ///   - work:    Work to perform while the given loading messsage is on-screen
+    ///
+    /// - Returns: Whatever `work` returns
+    func withLoadingMessage<T>(_ message: LocalizedStringResource, perform work: () async -> T) async -> T {
+        let previousMessage = loadingMessage
+        loadingMessage = message
+        defer { loadingMessage = previousMessage }
+        return await work()
     }
 }
 
