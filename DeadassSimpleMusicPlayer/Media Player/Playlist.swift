@@ -470,13 +470,7 @@ private extension [Playlist.Entry] {
                 self.publishedDate = nil
             }
             
-            do {
-                self.contentType = try entry.reference.resolve().url.contentType
-            }
-            catch {
-                log(error: error, "Couldn't resolve file URL for sorting. File might not exist anymore, or permissions are borked.")
-                self.contentType = .audiovisualContent
-            }
+            self.contentType = entry.mediaItem?.autoAccessSecurityScopedResourceUrl.contentType ?? .audiovisualContent
             
             self.fileName = entry.reference.filename
         }

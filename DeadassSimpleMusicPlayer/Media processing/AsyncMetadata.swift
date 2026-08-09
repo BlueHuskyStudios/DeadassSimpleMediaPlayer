@@ -162,11 +162,10 @@ public extension AsyncMetadata {
 
 public extension AsyncMetadata.RetrievalApproach where Value == Int {
     static let stringToInt: Self = parseLoadedValue { unparsedData in
-        guard let string = unparsedData as? String else { return nil }
-        let filtered = string
-            .prefix(while: { "/" != $0 })
-            .filter { CharacterSet.decimalDigits.contains($0.unicodeScalars.first!) }
-        
+        guard let string = unparsedData as? String,
+              let found = string.firstMatch(of: /(?:\d|[., '])+/.asciiOnlyDigits())?.output
+        else { return nil }
+        let filtered = found.filter({ ("0"..."9").contains($0) })
         return Int(filtered)
     }
 }
