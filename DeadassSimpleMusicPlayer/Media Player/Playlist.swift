@@ -390,7 +390,7 @@ public extension Playlist {
                         }
                         .collect()
                     
-                    let sortedEntries = await entries.sortedByAlbumAndTrack()
+                    let sortedEntries = await entries.autoSorted()
                     
                     log(info: "Built \(sortedEntries.count) queue entries from the folder \(url.lastPathComponent)")
                     return sortedEntries
@@ -434,7 +434,7 @@ private extension [Playlist.Entry] {
     /// Awaits every entry's album and track-number metadata before returning, on purpose: a folder import is a "load this now" action, not a background task the user might check on later, so the wait belongs here rather than being deferred and felt as playback starting in the wrong order.
     ///
     /// Missing keys always sort after present ones — a file with no album metadata reads as "comes after every real album," not as "first alphabetically" (which `nil` would otherwise do by accident).
-    func sortedByAlbumAndTrack() async -> Self {
+    func autoSorted() async -> Self {
         var keyed: [(entry: Element, key: SortKey)] = []
         keyed.reserveCapacity(self.count)
         
@@ -454,8 +454,8 @@ private extension [Playlist.Entry] {
         var album: String?
         var trackNumber: Int?
         var contentType: UTType
-        var fileName: String
         var publishedDate: DateComponents?
+        var fileName: String
         
         
         init(describing entry: Element) async {

@@ -161,6 +161,9 @@ public extension AsyncMetadata {
 
 
 public extension AsyncMetadata.RetrievalApproach where Value == Int {
+    /// Assumes the metadata is a string which represents an integer, and parses it as such.
+    ///
+    /// The current implementation only supports ASCII digits (`0123456789`); other scripts aren't yet supported (e.g. if the track number is `٣` then this returns `nil`).
     static let stringToInt: Self = parseLoadedValue { unparsedData in
         guard let string = unparsedData as? String,
               let found = string.firstMatch(of: /(?:\d|[., '])+/.asciiOnlyDigits())?.output
@@ -173,6 +176,9 @@ public extension AsyncMetadata.RetrievalApproach where Value == Int {
 
 
 public extension AsyncMetadata.RetrievalApproach where Value == DateComponents {
+    /// Assumes the metadata is a string which represent a date, and parses it as a `DateComponents`.
+    ///
+    /// The current implementation only supports ISO-8601 dates or a bare year
     static let stringToDateComponents: Self = parseLoadedValue { unparsedData in
         guard let string = unparsedData as? String else { return nil }
         if nil != string.firstMatch(of: /^\d{4}$/) { return DateComponents(year: Int(string)) }
@@ -182,11 +188,12 @@ public extension AsyncMetadata.RetrievalApproach where Value == DateComponents {
 
 
 
-public extension AsyncMetadata.RetrievalApproach where Value == UIImage {
-    static let dataToUiImage: Self = loadDataValue { unparsedData in
-        UIImage(data: unparsedData)
-    }
-}
+//#16: this will be used soon, but the implementation below crashes for some reason – Ky, 2026-08-08
+//public extension AsyncMetadata.RetrievalApproach where Value == UIImage {
+//    static let dataToUiImage: Self = loadDataValue { unparsedData in
+//        UIImage(data: unparsedData)
+//    }
+//}
 
 
 // MARK: Default keys
@@ -431,17 +438,17 @@ private extension AsyncMetadata {
         in assetMetadata: [AVMetadataItem],
         matching key: Key<Value>
     ) async throws -> (any Sendable)? {
-        let uuid = "\(key): \(UUID())"
-        print(uuid, "Entering"); defer { print(uuid, "Exiting") }
+        //let uuid = "\(key): \(UUID())"
+        //print(uuid, "Entering"); defer { print(uuid, "Exiting") }
         
         let theSearchForDesiredMetadata = assetMetadata.first(where: { item in
             guard let identifier = item.identifier else { return false }
             return key.identifiers.contains(identifier)
         })
-        print(uuid, "nil != \(key.id):", nil != theSearchForDesiredMetadata)
+        //print(uuid, "nil != \(key.id):", nil != theSearchForDesiredMetadata)
         guard let desiredMetadata = theSearchForDesiredMetadata else {
-            print(uuid, "Desired metadata not found")
-            print(uuid, "nil == \(key.id):", nil == theSearchForDesiredMetadata)
+            //print(uuid, "Desired metadata not found")
+            //print(uuid, "nil == \(key.id):", nil == theSearchForDesiredMetadata)
             return nil
         }
         
@@ -449,7 +456,7 @@ private extension AsyncMetadata {
         
         switch key.retrievalApproach {
         case .justLoadValue:
-            print(uuid, "Getting rawValue")
+            //print(uuid, "Getting rawValue")
             guard let rawValue = try await desiredMetadata.load(.value) else {
                 log(warning: "Raw value not found for \(key.id)")
                 return nil
@@ -463,13 +470,13 @@ private extension AsyncMetadata {
             typedValue = _typedValue
             
         case .loadDataValue(let initializer):
-            print(uuid, "Getting dataValue")
+            //print(uuid, "Getting dataValue")
             guard let dataValue: Data = try await desiredMetadata.load(.dataValue) else {
                 log(warning: "Data value not found for \(key.id)")
                 return nil
             }
             
-            print(uuid, "Initializing typedValue")
+            //print(uuid, "Initializing typedValue")
             guard let _typedValue = initializer(dataValue) else {
                 log(warning: "Data value found for \(key.id), but couldn' convert it to \(Value.self)")
                 return nil
@@ -477,13 +484,13 @@ private extension AsyncMetadata {
             typedValue = _typedValue
             
         case .parseLoadedValue(initializer: let initializer):
-            print(uuid, "Loading rawValue")
+            //print(uuid, "Loading rawValue")
             guard let rawValue = try await desiredMetadata.load(.value) else {
                 log(warning: "Unparsed value not found for \(key.id)")
                 return nil
             }
             
-            print(uuid, "Parsing rawValue")
+            //print(uuid, "Parsing rawValue")
             guard let _typedValue = initializer(rawValue) else {
                 log(warning: "Raw value found for \(key.id), but was of type \(type(of: rawValue)), which couldn't be converted to \(Value.self)")
                 return nil
@@ -491,7 +498,7 @@ private extension AsyncMetadata {
             typedValue = _typedValue
         }
         
-        print(uuid, "Returning typedValue")
+        //print(uuid, "Returning typedValue")
         return typedValue as any Sendable
     }
 }
