@@ -462,7 +462,7 @@ private extension AsyncMetadata {
                 return nil
             }
             
-            print(uuid, "Getting typedValue")
+            //print(uuid, "Getting typedValue")
             guard let _typedValue = rawValue as? Value else {
                 log(warning: "Raw value found for \(key.id), but was of type \(type(of: rawValue)), which couldn't be converted to \(Value.self)")
                 return nil
