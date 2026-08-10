@@ -69,6 +69,18 @@ struct MediaPlayerView: View {
     @State
     private var itemEndSink: AnyCancellable? = nil
     
+    /// Watches the current `AVPlayerItem` for its time changing discontinuously (a seek), so remote controls can be told where the playhead actually landed. Replaced whenever the item is; dropping the old sink is what unsubscribes it.
+    ///
+    /// The system extrapolates elapsed time from the last-published value and the playback rate, and a seek changes elapsed time *without* changing the rate — so a seek is invisible to that extrapolation until something republishes.
+    @State
+    private var itemTimeJumpSink: AnyCancellable? = nil
+    
+    /// The current item's duration once it's known, or `nil` while it's still being determined.
+    ///
+    /// Loaded explicitly rather than read from `AVPlayerItem.duration`, which reports `.indefinite` until the item becomes ready — publishing that to remote controls is what produces a track with no progress bar.
+    @State
+    private var currentItemDuration: TimeInterval? = nil
+    
     /// Waits for the current `AVPlayerItem` to become ready, so a restored playback position can be applied at a moment the item will actually honor it (seeks issued earlier are ignored or rejected outright).
     ///
     /// Direct KVO rather than Combine's KVO publisher: this is the canonical, battle-tested readiness pattern, chosen after the publisher approach failed to restore positions in practice. Must be retained for its lifetime; invalidated & replaced whenever the item is.
@@ -86,6 +98,8 @@ struct MediaPlayerView: View {
         baseBodyAndChangeReactions
         
         .onAppear {
+            setupRemoteTransportControls()
+            
             player.publisher(for: \.rate).sink { rate in
                 isPlaying = rate > 0
             }
@@ -191,6 +205,9 @@ private extension MediaPlayerView {
                 // Pausing is a moment the user implicitly expects their place to be remembered
                 session.saveNowPlayingSnapshotNow()
             }
+            
+            // The published rate is what the system extrapolates elapsed time from, so it has to change when playback does or the remote progress bar keeps advancing through a paused track
+            setupNowPlaying()
         }
     }
     
@@ -258,14 +275,17 @@ private extension MediaPlayerView {
     func prepareNewMedia(from newItem: MediaItem?) {
         
         currentMediaMetadata = newItem?.metadata
+        currentItemDuration = nil // The previous track's duration must not survive into this one's Now Playing info
         
         let shouldResumePlayback = session.takePlaybackIntent()
         
         guard let newItem else {
             itemEndSink = nil
+            itemTimeJumpSink = nil
             itemReadinessObservation?.invalidate()
             itemReadinessObservation = nil
             player.replaceCurrentItem(with: nil)
+            setupNowPlaying()
             UIApplication.shared.endReceivingRemoteControlEvents()
             return
         }
@@ -279,6 +299,15 @@ private extension MediaPlayerView {
             .receive(on: DispatchQueue.main)
             .sink {
                 currentItemDidFinishPlaying()
+            }
+        
+        // Scoped to this item for the same reason, so a seek is never attributed to a track which has since been replaced
+        itemTimeJumpSink = NotificationCenter.default
+            .publisher(for: AVPlayerItem.timeJumpedNotification, object: playerItem)
+            .map { _ in }
+            .receive(on: DispatchQueue.main)
+            .sink {
+                setupNowPlaying()
             }
         
         player.replaceCurrentItem(with: playerItem)
@@ -314,6 +343,19 @@ private extension MediaPlayerView {
         
         if shouldResumePlayback {
             player.play()
+        }
+        
+        // Published immediately with whatever's known so far, so remote controls never sit on the previous track's info (or their own "Unknown Artist" placeholders) while metadata resolves. Each metadata update pings this again to fill in the rest.
+        setupNowPlaying()
+        
+        Task {
+            guard let duration = try? await playerItem.asset.load(.duration),
+                  duration.seconds.isFinite,
+                  playerItem === player.currentItem // The queue may have moved on while this loaded
+            else { return }
+            
+            currentItemDuration = duration.seconds
+            setupNowPlaying()
         }
     }
     
@@ -419,48 +461,86 @@ private extension MediaPlayerView {
         // Get the shared MPRemoteCommandCenter
         let commandCenter = MPRemoteCommandCenter.shared()
         
+        // Cleared first: the command center is a long-lived shared singleton, so re-running this would otherwise stack duplicate handlers on top of the old ones
+        commandCenter.playCommand.removeTarget(nil)
+        commandCenter.pauseCommand.removeTarget(nil)
+        commandCenter.togglePlayPauseCommand.removeTarget(nil)
+        
+        // These capture `player` rather than this view's `isPlaying`, because the handlers outlive any given value of this struct, and because driving the player directly lets the existing `rate` observer sync `isPlaying` back the same way an in-app tap would
+        
         // Add handler for Play Command
-        commandCenter.playCommand.addTarget { event in
-            isPlaying = true
-            
-            return isPlaying
-                ? .commandFailed
-                : .success
+        commandCenter.playCommand.addTarget { [player] event in
+            guard 0 == player.rate else { return .commandFailed } // Already playing
+            player.play()
+            return .success
         }
         
         // Add handler for Pause Command
-        commandCenter.pauseCommand.addTarget { event in
-            isPlaying = false
-            
-            return isPlaying
-                ? .success
-                : .commandFailed
+        commandCenter.pauseCommand.addTarget { [player] event in
+            guard 0 != player.rate else { return .commandFailed } // Already paused
+            player.pause()
+            return .success
+        }
+        
+        // Add handler for Toggle Play/Pause Command, which is what headphone buttons and many car head units send instead of the discrete commands above
+        commandCenter.togglePlayPauseCommand.addTarget { [player] event in
+            if 0 == player.rate {
+                player.play()
+            }
+            else {
+                player.pause()
+            }
+            return .success
         }
     }
     
     
     func setupNowPlaying() {
-        // Define Now Playing Info
-        var nowPlayingInfo = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+        guard let currentMediaItem else {
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+            return
+        }
+        
+        // Built fresh rather than read-modify-written from the existing dictionary: inheriting the previous track's entries means any key *this* track lacks silently keeps showing the last track's value
+        var nowPlayingInfo = [String : Any]()
         
         if let title = ((try? metadata(.title)?.value) ?? nil)
-            ?? currentMediaItem?.autoAccessSecurityScopedResourceUrl.deletingPathExtension().lastPathComponent.nonEmptyOrNil
+            ?? currentMediaItem.autoAccessSecurityScopedResourceUrl.deletingPathExtension().lastPathComponent.nonEmptyOrNil
         {
             nowPlayingInfo[MPMediaItemPropertyTitle] = title
         }
-        else {
-            nowPlayingInfo.removeValue(forKey: MPMediaItemPropertyTitle)
+        
+        if let artist = (try? metadata(.creator)?.value) ?? nil {
+            nowPlayingInfo[MPMediaItemPropertyArtist] = artist
+        }
+        
+        if let album = (try? metadata(.album)?.value) ?? nil {
+            nowPlayingInfo[MPMediaItemPropertyAlbumTitle] = album
+        }
+        
+        if let trackNumber = (try? metadata(.trackNumber)?.value) ?? nil {
+            nowPlayingInfo[MPMediaItemPropertyAlbumTrackNumber] = trackNumber
         }
 
         if let image = try? metadata(.image)?.value ?? nil { //??nil can't believe I still have to battle auto-double-optionals
+            // `@Sendable` is load-bearing, per Apple DTS: MPMediaItemArtwork retains this closure and calls it on an arbitrary thread, so without it the closure inherits this view's MainActor isolation and traps when the system asks for the image. Dormant until #16 makes `.image` resolve, at which point it would crash on launch.
             nowPlayingInfo[MPMediaItemPropertyArtwork] =
-                MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+                MPMediaItemArtwork(boundsSize: image.size) { @Sendable _ in image }
             
             
         }
-//        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = playerItem.currentTime().seconds
-//        nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = playerItem.asset.duration.seconds
-//        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = player.rate
+        
+        // These three are what make a progress bar appear at all. The system extrapolates elapsed time from the last-published value and the rate, so they're published on load, on play/pause, and on seek — deliberately *not* on a timer, since frequent writes get throttled during long background playback and go stale without warning
+        let elapsed = player.currentTime().seconds
+        if elapsed.isFinite {
+            nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = elapsed
+        }
+        
+        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = player.rate
+        
+        if let currentItemDuration {
+            nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = currentItemDuration
+        }
 
         // Set the metadata
         Task { @MainActor in
