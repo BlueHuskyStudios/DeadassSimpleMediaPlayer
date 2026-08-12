@@ -103,3 +103,50 @@ One file touched: `UI/MediaPlayerView.swift`.
 7. Launch with a restored queue and don't press play → Control Center shows the restored track, paused.
 
 **Not compiled here** (no Xcode in this environment). Risk areas if something fails to build: `removeTarget(nil)` overload resolution, and the `(try? metadata(.trackNumber)?.value) ?? nil` double-optional flattening for a non-`String` value type.
+
+---
+
+## Follow-up (2026-08-10) — metadata flashed while scrubbing from Control Center
+
+**Reported:** with the fix in place, scrubbing via Control Center or the Dynamic Island made title/artist blank out and reappear.
+
+**Cause: metadata throttling, self-inflicted.** `setupNowPlaying()` rebuilt and republished the *entire* dictionary from the `timeJumped` subscription. A Control Center scrub fires that notification rapidly, so the title was being rewritten dozens of times per second with an identical value. iOS rate-limits Now Playing **metadata** updates specifically — it logs "Application exceeded audio metadata throttle limit," and an Apple engineer has confirmed on the developer forums that title updates in particular are throttled. A throttled title write is *dropped*, not deferred, which is exactly a blank-then-reappear flash.
+
+Worth noting the irony: the "don't publish on a timer" note earlier in this journal was about the periodic time observer, and I then reintroduced the same hazard through the seek path.
+
+**Fix:** split the two kinds of update, which is a truer model anyway — a seek changes position, not metadata.
+
+- `setupNowPlaying()` — full publish. Called on track change, metadata update, and duration resolution (all genuinely infrequent, once-ish per track).
+- `updateNowPlayingPlaybackPosition()` — reads the published dictionary and rewrites *only* elapsed time and rate. Called on seek and on play/pause.
+- `addPlaybackPositionInfo(to:)` — shared by both, so a full publish and a position-only update can't disagree about where playback is.
+
+**Watch for, if flashing persists in any form:** `AsyncMetadata.onMetadataDidUpdate()` pings once per key reaching a terminal state, so a track with title + creator + album + trackNumber + image could trigger up to ~5 full publishes as it loads. That's per-track rather than per-scrub-tick, so it should stay well under the throttle, but if it doesn't, the next step is to skip a full publish when the metadata values haven't actually changed.
+
+**Observation at the time, since superseded by Round 2:** `changePlaybackPositionCommand` was not registered, yet Control Center scrubbing worked and produced `timeJumped` notifications — presumably via `AVPlayerViewController`'s own Now Playing integration. Left alone deliberately then, on the grounds that registering a competing handler for something already working risks double-seeking. Round 2 found that this same AVKit integration was the remaining bug, disabled it, and registered the command — which also dissolves the double-seek concern, since there's no longer a competing handler to collide with.
+
+---
+
+## Round 2 (2026-08-10) — the metadata "flash", actual root cause
+
+**Reconciling this with the Follow-up above:** the throttling analysis identified a real hazard and the split it produced (`setupNowPlaying` vs. `updateNowPlayingPlaybackPosition`) is correct architecture worth keeping on its own merits — a seek changes position, not metadata, and rewriting the whole dictionary dozens of times per scrub was genuinely wasteful. But it did not fully fix the flash, because it addressed *our* write frequency while a second, entirely separate writer was also in play. Both changes are in the code; this section is the one that explains the symptom.
+
+
+**Ky's report after testing round 1:** artist, album, and progress all now appear correctly (causes 2, 3, and 5 confirmed fixed on device). But when scrubbing from Control Center or the Dynamic Island, and when pausing, the title and artist briefly vanish and are replaced by the app's own name ("Dead Simple"), then come back.
+
+**What the app name tells us.** iOS displays the app's name when `nowPlayingInfo` contains no title. So something was *replacing* our dictionary with a minimal one, and then our `setupNowPlaying()` was writing ours back a beat later. Two writers, not one.
+
+**Root cause:** `AVPlayerViewController.updatesNowPlayingInfoCenter` defaults to `true`, meaning AVKit publishes its *own* Now Playing info whenever playback state changes. It knows nothing about this app's `AsyncMetadata`, so its version has no artist/album and no title we'd recognize — hence the app-name fallback. Every pause and every scrub triggers an AVKit write, immediately followed by ours: a visible flash.
+
+Notably this was *latent before round 1* — with our publishing broken, AVKit's minimal dictionary was all there was, which is very likely the original "Track 00 / Unknown Artist / Unknown Album" on Bluetooth connect. So this isn't a regression introduced by the fix; it's the last layer of the same bug, only visible once ours started working.
+
+**Fix (2 files):**
+- `UI/Player.swift` — `vc.updatesNowPlayingInfoCenter = false` in `makeUIViewController`. This app publishes strictly richer info than AVKit can derive, so ours should be the only writer.
+- `UI/MediaPlayerView.swift` — registered `changePlaybackPositionCommand`. **This pairing is not optional:** disabling AVKit's Now Playing integration also gives up whatever remote-scrub handling it was providing, so without this the Control Center scrubber would move and snap back. The handler seeks the player, which fires `timeJumpedNotification`, which republishes the corrected position through the path already built in round 1.
+
+**Principle worth remembering:** owning the Now Playing dictionary and owning the remote commands are a package deal. Take one, take both.
+
+### Additional verification for Ky
+
+8. Scrub from Control Center → position changes and *sticks* (doesn't snap back), and metadata never flashes to the app name.
+9. Pause from anywhere → metadata stays put, only the play/pause glyph changes.
+10. Confirm PiP and AirPlay still behave, since `updatesNowPlayingInfoCenter` sits on the same controller.

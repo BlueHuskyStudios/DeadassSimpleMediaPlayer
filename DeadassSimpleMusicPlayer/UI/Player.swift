@@ -25,6 +25,10 @@ struct Player: UIViewControllerRepresentable {
         let vc = AVPlayerViewController()
         vc.player = player
         vc.canStartPictureInPictureAutomaticallyFromInline = true
+        
+        // Left on, this publishes its own Now Playing info whenever playback state changes, clobbering ours — the user sees the real metadata blink out to just the app name on every pause and scrub, then blink back when we rewrite it. This app publishes richer info (artist, album, track number) than AVKit can derive on its own, so ours wins and we own the matching remote commands.
+        vc.updatesNowPlayingInfoCenter = false
+        
         return vc
     }
     

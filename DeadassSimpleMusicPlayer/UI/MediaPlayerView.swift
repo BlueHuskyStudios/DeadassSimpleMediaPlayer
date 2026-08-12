@@ -207,7 +207,7 @@ private extension MediaPlayerView {
             }
             
             // The published rate is what the system extrapolates elapsed time from, so it has to change when playback does or the remote progress bar keeps advancing through a paused track
-            setupNowPlaying()
+            updateNowPlayingPlaybackPosition()
         }
     }
     
@@ -307,7 +307,7 @@ private extension MediaPlayerView {
             .map { _ in }
             .receive(on: DispatchQueue.main)
             .sink {
-                setupNowPlaying()
+                updateNowPlayingPlaybackPosition()
             }
         
         player.replaceCurrentItem(with: playerItem)
@@ -465,6 +465,7 @@ private extension MediaPlayerView {
         commandCenter.playCommand.removeTarget(nil)
         commandCenter.pauseCommand.removeTarget(nil)
         commandCenter.togglePlayPauseCommand.removeTarget(nil)
+        commandCenter.changePlaybackPositionCommand.removeTarget(nil)
         
         // These capture `player` rather than this view's `isPlaying`, because the handlers outlive any given value of this struct, and because driving the player directly lets the existing `rate` observer sync `isPlaying` back the same way an in-app tap would
         
@@ -490,6 +491,14 @@ private extension MediaPlayerView {
             else {
                 player.pause()
             }
+            return .success
+        }
+        
+        // Add handler for scrubbing from Control Center, the Lock Screen, or the Dynamic Island. This app publishes its own Now Playing info (see `Player.updatesNowPlayingInfoCenter`), so it owns the commands that go with it — without this, the remote scrubber would move and then snap back. The resulting seek fires `timeJumpedNotification`, which republishes the new position.
+        commandCenter.changePlaybackPositionCommand.addTarget { [player] event in
+            guard let event = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
+            
+            player.seek(to: CMTime(seconds: event.positionTime, preferredTimescale: 600))
             return .success
         }
     }
@@ -530,17 +539,11 @@ private extension MediaPlayerView {
             
         }
         
-        // These three are what make a progress bar appear at all. The system extrapolates elapsed time from the last-published value and the rate, so they're published on load, on play/pause, and on seek — deliberately *not* on a timer, since frequent writes get throttled during long background playback and go stale without warning
-        let elapsed = player.currentTime().seconds
-        if elapsed.isFinite {
-            nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = elapsed
-        }
-        
-        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = player.rate
-        
         if let currentItemDuration {
             nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = currentItemDuration
         }
+        
+        addPlaybackPositionInfo(to: &nowPlayingInfo)
 
         // Set the metadata
         Task { @MainActor in
@@ -548,6 +551,32 @@ private extension MediaPlayerView {
             
             forceUpdateBodge.toggle()
         }
+    }
+    
+    
+    /// Republishes only where playback currently is, leaving already-published metadata untouched.
+    ///
+    /// Seeking and pausing don't change the title, artist, or album — and rewriting those unchanged values is actively harmful rather than merely wasteful: iOS throttles Now Playing *metadata* updates (logging "Application exceeded audio metadata throttle limit"), and a throttled title write is **dropped**, not deferred. Republishing the whole dictionary on every seek is what makes the title and artist visibly blank out and reappear while scrubbing from Control Center.
+    func updateNowPlayingPlaybackPosition() {
+        guard var nowPlayingInfo = MPNowPlayingInfoCenter.default().nowPlayingInfo else {
+            return // Nothing published yet, so there's no position to correct — a full publish will happen when media loads
+        }
+        
+        addPlaybackPositionInfo(to: &nowPlayingInfo)
+        
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+    }
+    
+    
+    /// Writes where playback is and how fast it's moving. Shared so a full publish and a position-only update can never disagree about what "current position" means.
+    func addPlaybackPositionInfo(to nowPlayingInfo: inout [String : Any]) {
+        // The system extrapolates elapsed time from the last-published value and the rate, so these two are what make a progress bar appear and move at all. Published on load, on play/pause, and on seek — deliberately *not* on a timer, since frequent writes get throttled during long background playback and go stale without warning.
+        let elapsed = player.currentTime().seconds
+        if elapsed.isFinite {
+            nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = elapsed
+        }
+        
+        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = player.rate
     }
 }
 
