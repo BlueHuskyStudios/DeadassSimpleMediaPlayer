@@ -575,6 +575,9 @@ private extension MediaPlayerView {
         if elapsed.isFinite {
             nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = elapsed
         }
+        else {
+            nowPlayingInfo.removeValue(forKey: MPNowPlayingInfoPropertyElapsedPlaybackTime)
+        }
         
         nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = player.rate
     }
