@@ -15,6 +15,7 @@ import UIKit
 #endif
 
 import CollectionTools
+import CrossKitTypes
 import SimpleLogging
 
 
@@ -80,6 +81,14 @@ struct MediaPlayerView: View {
     /// Loaded explicitly rather than read from `AVPlayerItem.duration`, which reports `.indefinite` until the item becomes ready — publishing that to remote controls is what produces a track with no progress bar.
     @State
     private var currentItemDuration: TimeInterval? = nil
+    
+    /// Cover art to show where video would be. Only ever non-`nil` for media which has no video of its own; video always wins the screen.
+    @State
+    private var currentArtwork: NativeImage? = nil
+    
+    /// Whether the current item carries its own video. Assumed `true` until inspection proves otherwise, so cover art can never flash over the opening frames of an actual video.
+    @State
+    private var currentItemHasVideoTrack = true
     
     /// Waits for the current `AVPlayerItem` to become ready, so a restored playback position can be applied at a moment the item will actually honor it (seeks issued earlier are ignored or rejected outright).
     ///
@@ -148,6 +157,7 @@ struct MediaPlayerView: View {
         
         .onReceive(currentMediaMetadata?.onMetadataDidUpdate()) { _ in
             setupNowPlaying()
+            refreshArtwork()
             log(info: "Metadata updated")
         }
         
@@ -259,7 +269,7 @@ private extension MediaPlayerView {
     
     
     var playerView: some View {
-        Player(player: player, pipStatus: $pipStatus)
+        Player(player: player, artwork: currentArtwork, pipStatus: $pipStatus)
             .aspectRatio(16/9, contentMode: .fit)
             .frame(maxWidth: .infinity)
             .layoutPriority(2)
@@ -276,6 +286,8 @@ private extension MediaPlayerView {
         
         currentMediaMetadata = newItem?.metadata
         currentItemDuration = nil // The previous track's duration must not survive into this one's Now Playing info
+        currentArtwork = nil // Likewise the previous track's cover art
+        currentItemHasVideoTrack = true // Assumed until proven otherwise, so art can't flash over a video's first frames
         
         let shouldResumePlayback = session.takePlaybackIntent()
         
@@ -357,6 +369,29 @@ private extension MediaPlayerView {
             currentItemDuration = duration.seconds
             setupNowPlaying()
         }
+        
+        // Cover art belongs only where video doesn't, so the asset's tracks decide whether art is allowed through at all
+        Task {
+            let videoTracks = (try? await playerItem.asset.loadTracks(withMediaType: .video)) ?? []
+            
+            guard playerItem === player.currentItem else { return }
+            
+            currentItemHasVideoTrack = !videoTracks.isEmpty
+            refreshArtwork()
+        }
+    }
+    
+    
+    /// Pulls the current media's cover art out of its metadata, but only for media with no video of its own.
+    ///
+    /// Called both when the video-track inspection finishes and whenever metadata updates, since either can be the last to arrive.
+    func refreshArtwork() {
+        guard !currentItemHasVideoTrack else {
+            currentArtwork = nil
+            return
+        }
+        
+        currentArtwork = (try? metadata(.image)?.value) ?? nil
     }
     
     

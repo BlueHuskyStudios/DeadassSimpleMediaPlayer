@@ -8,6 +8,8 @@
 import AVKit
 import SwiftUI
 
+import CrossKitTypes
+
 
 
 /// A UIKit/SwiftUI translation layer between ``AVPlayer`` and ``MediaPlayerView``
@@ -15,6 +17,9 @@ struct Player: UIViewControllerRepresentable {
     
     /// The player to shim into this UI layer
     let player: AVPlayer
+    
+    /// Cover art to show where video would be, for media which has none of its own. `nil` shows nothing, leaving the system's default audio appearance visible.
+    var artwork: NativeImage? = nil
     
     /// The current picture-in-picture status of this player
     @Binding
@@ -33,7 +38,53 @@ struct Player: UIViewControllerRepresentable {
     }
     
     
-    func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) { }
+    func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
+        syncArtwork(in: uiViewController)
+    }
+    
+    
+    /// Reconciles the cover-art image view inside the controller's content overlay: creates it when first needed, updates it when the art changes, removes it when there's none.
+    ///
+    /// `contentOverlayView` is the layer between the video content and the playback controls, so art placed here can never cover the transport controls nor intercept touches meant for them. The view is found by tag rather than stored, since this representable is a value type recreated on every update.
+    private func syncArtwork(in playerViewController: AVPlayerViewController) {
+        guard let overlay = playerViewController.contentOverlayView else { return }
+        
+        let existingImageView = overlay.viewWithTag(Self.artworkViewTag) as? UIImageView
+        
+        guard let artwork else {
+            existingImageView?.removeFromSuperview()
+            return
+        }
+        
+        guard let imageView = existingImageView ?? makeArtworkView(in: overlay) else { return }
+        
+        if imageView.image !== artwork {
+            imageView.image = artwork
+        }
+    }
+    
+    
+    private func makeArtworkView(in overlay: UIView) -> UIImageView? {
+        let imageView = UIImageView()
+        imageView.tag = Self.artworkViewTag
+        imageView.contentMode = .scaleAspectFit
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        
+        overlay.addSubview(imageView)
+        
+        NSLayoutConstraint.activate([
+            imageView.leadingAnchor .constraint(equalTo: overlay.leadingAnchor),
+            imageView.trailingAnchor.constraint(equalTo: overlay.trailingAnchor),
+            imageView.topAnchor     .constraint(equalTo: overlay.topAnchor),
+            imageView.bottomAnchor  .constraint(equalTo: overlay.bottomAnchor),
+        ])
+        
+        return imageView
+    }
+    
+    
+    /// Identifies the cover-art image view among the overlay's subviews across updates, since a value-type representable can't hold a reference to it
+    private static let artworkViewTag = 0xA27
     
     
     func makeCoordinator() -> Coordinator {
