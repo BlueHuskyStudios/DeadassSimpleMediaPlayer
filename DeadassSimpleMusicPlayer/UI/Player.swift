@@ -70,6 +70,9 @@ struct Player: UIViewControllerRepresentable {
         imageView.contentMode = .scaleAspectFit
         imageView.translatesAutoresizingMaskIntoConstraints = false
         
+        // Opaque on purpose: the image view spans the whole overlay but its art is fitted inside, so without a fill, AVKit's own audio placeholder shows through the letterbox on either side. Black matches the letterboxing convention this region already uses for video.
+        imageView.backgroundColor = .black
+        
         overlay.addSubview(imageView)
         
         NSLayoutConstraint.activate([

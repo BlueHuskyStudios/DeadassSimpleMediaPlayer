@@ -384,14 +384,17 @@ private extension MediaPlayerView {
     
     /// Pulls the current media's cover art out of its metadata, but only for media with no video of its own.
     ///
+    /// Media with no embedded art falls back to the app's own placeholder, so the player region always has something deliberate in it — which is also what lets that region be drawn opaque, hiding `AVPlayerViewController`'s default audio placeholder underneath.
+    ///
     /// Called both when the video-track inspection finishes and whenever metadata updates, since either can be the last to arrive.
     func refreshArtwork() {
         guard !currentItemHasVideoTrack else {
-            currentArtwork = nil
+            currentArtwork = nil // Video fills this region itself; nothing should be drawn over it
             return
         }
         
-        currentArtwork = (try? metadata(.image)?.value) ?? nil
+        currentArtwork = ((try? metadata(.image)?.value) ?? nil)
+            ?? .placeholderArt
     }
     
     
@@ -566,8 +569,9 @@ private extension MediaPlayerView {
             nowPlayingInfo[MPMediaItemPropertyAlbumTrackNumber] = trackNumber
         }
 
-        if let image = try? metadata(.image)?.value ?? nil { //??nil can't believe I still have to battle auto-double-optionals
-            // `@Sendable` is load-bearing, per Apple DTS: MPMediaItemArtwork retains this closure and calls it on an arbitrary thread, so without it the closure inherits this view's MainActor isolation and traps when the system asks for the image. Dormant until #16 makes `.image` resolve, at which point it would crash on launch.
+        // Unlike the player, this falls back to the placeholder even for video: Control Center and the Lock Screen have no video to show in that slot, so the app's own art beats an empty square
+        if let image = ((try? metadata(.image)?.value) ?? nil) ?? .placeholderArt {
+            // `@Sendable` is load-bearing, per Apple DTS: MPMediaItemArtwork retains this closure and calls it on an arbitrary thread, so without it the closure inherits this view's MainActor isolation and traps when the system asks for the image.
             nowPlayingInfo[MPMediaItemPropertyArtwork] =
                 MPMediaItemArtwork(boundsSize: image.size) { @Sendable _ in image }
             

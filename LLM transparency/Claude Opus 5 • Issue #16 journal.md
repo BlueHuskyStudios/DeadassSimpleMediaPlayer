@@ -140,3 +140,37 @@ For albums it stops at the first track that yields art (`loadFirstAvailableThumb
 5. Watch memory while scrolling a history list full of large-art files; this whole design exists to keep that flat.
 
 **Not compiled in the environment where this was written.** Most likely build friction: whether `Image(nativeImage:)` collides with something CrossKitTypes already provides, and whether `some Sequence<MediaReference>` needs spelling differently for the array call sites.
+
+---
+
+## Follow-up 2 (2026-08-14) — app placeholder art, and hiding AVKit's
+
+Two requests which turned out to be one change: use the app's own placeholder art (from the asset catalog) for media without cover art, in both the player and remote controls; and stop `AVPlayerViewController`'s default audio placeholder from showing.
+
+They're connected. The AVKit placeholder was visible *because* the artwork overlay had a transparent background and fitted art doesn't fill a 16:9 region — so AVKit's circle showed through the letterbox. Once every audio track has something deliberate to draw (real art or the app's placeholder), that overlay can be opaque, and AVKit's version is covered rather than fought with.
+
+**`NativeImage.placeholderArt`** (new file) — a single lazily-loaded lookup by asset name, with the name itself as a constant so there's one string to change on a rename.
+
+It is `NativeImage?`, not force-unwrapped, on purpose: the asset didn't exist when this was written, and every caller degrades to its previous behavior if it's missing. That means this compiles and runs correctly both before and after the asset lands, and a future rename that misses this constant produces a missing image rather than a crash.
+
+**Player** — `refreshArtwork()` falls back to `.placeholderArt`. Still only for media with no video track; video continues to own that region outright.
+
+**Remote controls** — `setupNowPlaying()` falls back to it too, but *unconditionally*, including for video. Deliberate difference: Control Center and the Lock Screen have no video to put in that slot, so the app's own art beats an empty square there even when the player itself is showing video.
+
+**Library rows** keep their SF symbols, as requested — an album with no art is better served by a disc glyph than by app branding repeated down a list.
+
+**Opaque overlay** — the artwork image view now has a black background, matching the letterboxing convention the region already uses. Black rather than a theme color because that region's visual identity belongs to the upcoming transport-controls redesign; this is the neutral choice, not a design decision.
+
+### Known cosmetic gap
+
+`currentItemHasVideoTrack` starts as `true`, so for the moment between a track loading and its video-track inspection finishing, no overlay exists — meaning audio can briefly show AVKit's placeholder before ours replaces it.
+
+Fixing it by assuming *audio* first would trade this for a worse artifact: the app's placeholder flashing over the opening frames of real videos. The current bias is the correct one; the gap only closes if the track inspection can be made to complete before the first frame draws.
+
+### Verification steps
+
+1. Play audio without embedded art → the app's placeholder shows in the player and in Control Center; AVKit's circle never appears.
+2. Play audio *with* embedded art → real art in both places, no placeholder.
+3. Play a video → video plays, no placeholder over it; Control Center shows the app placeholder if the video has no art of its own.
+4. With the asset catalog entry missing or misnamed → no crash; behavior falls back to showing nothing, exactly as before this change.
+5. Library rows still show SF symbols where art is absent.
