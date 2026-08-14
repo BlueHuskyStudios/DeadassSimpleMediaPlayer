@@ -15,20 +15,8 @@ No bullshit, just a good & simple app that plays media files.
 
 ## LLM Usage
 
-[I, Ky,](https://KyNorthstar.me) reviewed all the code in this repo, and wrote most of it.
+[I, Ky,](https://KyLeggiero.me) reviewed all the code in this repo, and wrote the vast majority of it.
 
-Some of it was written using LLMs, either directly writing it or advising it, including:
+Some of it was written using LLMs, either directly writing it or assisting me as I wrote it.
 
-- Claude 5 Fable
-- Claude 5 Sonnet
-- Claude 4.8 Opus
-- GPT-OSS
-- Apple Foundation Models
-
-Commits with notable LLM usage are marked as "Co-authored by" those LLMs, because transparency matters.
-Files written with notable LLM usage are marked as "Written by Ky directing <LLM>" or similar, because _transparency fucking matters._ 
-
-None of these LLMs were given direct access to the repo.
-None of the code was accepted blindly; check the PRs for proof. **Fuck vibe coding.**
-
-If that all is still a dealbreaker for you, I get it. No hard feelings; go use something that's better for you.
+Because transparency fucking matters, I'm making sure all of that is documented in the [LLM transparency](./LLM%20transparency) folder of this repo.
