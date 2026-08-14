@@ -77,14 +77,66 @@ Two pieces of state: `currentArtwork`, and `currentItemHasVideoTrack` which gate
 - **No artwork in the Library's queue/album rows.** Would be nice, but it's a feature, not this bug, and it needs a thumbnail-caching story before a long queue starts decoding dozens of full-size images.
 - **No caching or downsampling.** Cover art is decoded per track and held only for the current one. If large embedded art turns out to cost noticeable memory, downsampling at decode time is the fix — deliberately not pre-optimized.
 
-## For Ky to verify on device
+## Verification steps
 
 1. Play an audio file with embedded art → art appears where the QuickTime glyph was, and on the Lock Screen / Control Center.
-2. **No crash on load.** This is the hypothesis under test; if it crashes, the postponement note was right about something I haven't found, and the static-initialization theory above is where to look next.
+2. **No crash on load.** This is the hypothesis under test; if it crashes, the postponement note was right about something not found here, and the static-initialization theory above is where to look next.
 3. Play an audio file *without* art → no art, no leftover art from the previous track.
 4. Play a video → video plays, no cover art drawn over it, not even briefly at the start.
 5. Skip between an art-having track and an art-less one repeatedly → art appears and disappears correctly each time, never stale.
-6. Confirm transport controls still receive taps while art is displayed (the `contentOverlayView` layering claim).
-7. Confirm PiP still works.
+6. Transport controls still receive taps while art is displayed (the `contentOverlayView` layering claim).
+7. PiP still works.
 
-**Not compiled here** — no Xcode in this environment. Most likely build friction: whether `NativeImage` needs a different import in these two files than `CrossKitTypes`, and the `(try? metadata(.image)?.value) ?? nil` double-optional flattening.
+**Not compiled in the environment where this was written** — no Xcode available there. Most likely build friction: whether `NativeImage` needs a different import in these two files than `CrossKitTypes`, and the `(try? metadata(.image)?.value) ?? nil` double-optional flattening.
+
+## Outcome
+
+Verified on device 2026-08-14: art displays on the player and on remote controls. No crash on load — the hypothesis above held, and the `@Sendable` fix from #4 was indeed what had been missing.
+
+One cosmetic artifact observed: because the letterbox area is deliberately unfilled, `AVPlayerViewController`'s own audio-only placeholder (a large circle outline) shows through on either side of square cover art. Not a defect in this change — a consequence of the deliberate choice not to paint that region — but it needs an answer, either here or in the transport-controls redesign that will own that region's appearance.
+
+---
+
+## Follow-up (2026-08-14) — cover art in album icons and history rows
+
+Requested after the first pass shipped: show the art that now decodes in more places than just the player — as an album's icon in the Library instead of the generic disc symbol, and in History rows to make the list skimmable.
+
+### The constraint that shaped the design
+
+Getting art for a row means: resolve a bookmark → enter a security scope → open the asset → search its metadata → decode an image. That's expensive per row, and a History list can be hundreds of rows deep.
+
+Worse, embedded cover art is routinely 3000×3000. Decoding one at full size costs roughly 36 MB of bitmap; a scrolling list decoding several at once could plausibly get the app jetsammed. The already-working `.image` key does exactly that full decode, so reusing it here would have been the obvious wrong move.
+
+So the design goal was never "make it fast" — it was **never decode at full size, and never do the work twice.**
+
+### What was built
+
+**`.imageData` key** (`AsyncMetadata.swift`) — the same identifiers as `.image`, handed back as raw undecoded `Data` via a new `justLoadDataValue` retrieval approach. This exists solely so thumbnails can skip the full decode.
+
+**`NativeImage.thumbnail(fromEncoded:maxPixelSize:)`** (new file) — ImageIO's `CGImageSourceCreateThumbnailAtIndex`, which reads encoded bytes and produces a rendition at the requested size *without* ever materializing the full bitmap. `kCGImageSourceThumbnailMaxPixelSize` is load-bearing: Apple's forums document that omitting it makes ImageIO produce a thumbnail the size of the full image, which would defeat the entire exercise.
+
+Note for whoever touches this file: the private `CGImage` → `NativeImage` bridge is deliberately named `fromCoreGraphics(_:)` rather than `init(cgImage:)`. `UIImage` already declares that exact initializer, so an extension of the same name calls itself — an infinite recursion I wrote and caught before it shipped.
+
+**`ArtworkThumbnailCache`** (new file) — `@MainActor @Observable`, keyed by `MediaReference` (already `Hashable`). Rows read synchronously (getting `nil` at first) and load in a `.task`; Observation redraws them when art lands.
+
+It caches **absence as deliberately as presence.** Files without embedded art are common, and without an `alreadyAttempted` set, every art-less file would redo that entire resolve-and-open chain each time its row scrolled back into view.
+
+For albums it stops at the first track that yields art (`loadFirstAvailableThumbnail(among:)`) rather than opening all of them, since an album's tracks share one cover. Well-formed albums resolve on the first track.
+
+**Ownership:** the cache is `@State` on `LibraryView`, not on `PlayerSession`. It's a drawing convenience, not durable state, and letting it die with the sheet keeps decoded art from accumulating for a screen nobody is looking at. The cost is re-decoding on the next open, which is cheap now that everything cached is thumbnail-sized.
+
+### Judgment calls worth revisiting
+
+- **Only albums get art in the playlist list.** A hand-made playlist has no single cover that speaks for it, so it keeps its generic icon. Picking its first track's art would be arbitrary.
+- **History rows reserve their art slot even when empty**, showing a neutral glyph, so the list doesn't jitter as thumbnails resolve during a scroll.
+- **44pt × 3 default thumbnail size**, expressed in pixels rather than points because this type has no business reaching for the screen it'll be drawn on. Over-decoding slightly is harmless at this size.
+
+### Verification steps
+
+1. Open Library → Albums: albums with embedded art show it; art-less albums keep the disc icon.
+2. Open History: rows show per-file art, with a neutral placeholder where there's none.
+3. Scroll a long History list rapidly, then scroll back — art should already be there, with no re-loading and no memory growth.
+4. A file that's been moved or deleted still shows its row, just without art.
+5. Watch memory while scrolling a history list full of large-art files; this whole design exists to keep that flat.
+
+**Not compiled in the environment where this was written.** Most likely build friction: whether `Image(nativeImage:)` collides with something CrossKitTypes already provides, and whether `some Sequence<MediaReference>` needs spelling differently for the array call sites.

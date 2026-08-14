@@ -48,6 +48,12 @@ struct LibraryView: View {
     @State
     private var isImportingPlaylist = false
     
+    /// Shared by every row which shows cover art, so scrolling between tabs doesn't re-open the same files.
+    ///
+    /// Owned by this sheet rather than by the session: it's a drawing convenience, not part of anyone's durable state, and letting it die with the sheet keeps decoded art from accumulating for a screen nobody's looking at.
+    @State
+    private var artworkCache = ArtworkThumbnailCache()
+    
     /// A fully-prepared export awaiting the user's choice of destination; non-`nil` is what presents the exporter
     @State
     private var pendingExport: PendingExport? = nil
@@ -368,7 +374,7 @@ private extension LibraryView {
                                 dismiss() // Their goal (play that playlist) is accomplished; get out of the way
                             }
                         } label: {
-                            SavedPlaylistRow(playlist: playlist)
+                            SavedPlaylistRow(playlist: playlist, artworkCache: artworkCache)
                         }
                         .buttonStyle(.plain)
                         
@@ -565,6 +571,8 @@ private extension LibraryView {
                         }
                     } label: {
                         HStack {
+                            HistoryEntryArtwork(reference: historyEntry.reference, artworkCache: artworkCache)
+                            
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(historyEntry.displayName)
                                     .lineLimit(1)
@@ -698,16 +706,50 @@ private struct QueueEntryRow: View {
 
 
 /// One saved playlist: a kind-appropriate icon, its name, and how much is in it
+/// A history row's cover art, or a neutral placeholder holding the same space while (or if) none arrives.
+///
+/// Always occupies its slot, art or not, so a scrolling list of history entries doesn't jitter as thumbnails resolve.
+private struct HistoryEntryArtwork: View {
+    
+    let reference: MediaReference
+    
+    let artworkCache: ArtworkThumbnailCache
+    
+    
+    var body: some View {
+        Group {
+            if let artwork = artworkCache.thumbnail(for: reference) {
+                Image(nativeImage: artwork)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            }
+            else {
+                Image(systemName: "music.note")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 32, height: 32)
+        .clipShape(.rect(cornerRadius: 4))
+        
+        .task {
+            await artworkCache.loadThumbnailIfNeeded(for: reference)
+        }
+    }
+}
+
+
+
 private struct SavedPlaylistRow: View {
     
     let playlist: SavedPlaylist
     
+    let artworkCache: ArtworkThumbnailCache
+    
     
     var body: some View {
         HStack {
-            Image(systemName: iconName)
-                .foregroundStyle(.secondary)
-                .frame(width: 24)
+            artworkOrIcon
+                .frame(width: 24, height: 24)
             
             Text(playlist.name)
                 .lineLimit(1)
@@ -716,6 +758,29 @@ private struct SavedPlaylistRow: View {
             
             Text("^[\(playlist.items.count) item](inflect: true)")
                 .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        
+        .task {
+            // Only albums show art; a hand-made playlist has no single cover to speak for it
+            guard .album == playlist.kind else { return }
+            await artworkCache.loadFirstAvailableThumbnail(among: playlist.items)
+        }
+    }
+    
+    
+    @ViewBuilder
+    private var artworkOrIcon: some View {
+        if .album == playlist.kind,
+           let artwork = artworkCache.firstThumbnail(among: playlist.items)
+        {
+            Image(nativeImage: artwork)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .clipShape(.rect(cornerRadius: 3))
+        }
+        else {
+            Image(systemName: iconName)
                 .foregroundStyle(.secondary)
         }
     }
