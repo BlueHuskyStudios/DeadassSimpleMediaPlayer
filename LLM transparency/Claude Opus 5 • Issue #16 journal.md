@@ -174,3 +174,42 @@ Fixing it by assuming *audio* first would trade this for a worse artifact: the a
 3. Play a video → video plays, no placeholder over it; Control Center shows the app placeholder if the video has no art of its own.
 4. With the asset catalog entry missing or misnamed → no crash; behavior falls back to showing nothing, exactly as before this change.
 5. Library rows still show SF symbols where art is absent.
+
+---
+
+## Follow-up 3 (2026-08-14) — the thumbnail loading was on the main thread
+
+Reported: opening the Playlists tab froze the app for a second or two while art loaded. Correct diagnosis, and the fault was in the design above rather than in tuning.
+
+### What was actually wrong
+
+`ArtworkThumbnailCache` is `@MainActor`. Everything in its load path that wasn't awaiting something else therefore ran on the main thread: bookmark resolution, security-scope entry, and — worst — the ImageIO decode, which is pure synchronous compute. Once per row.
+
+The irony is worth recording: the whole design above exists to avoid blocking on *memory*, and it blocked on the *thread* instead. Getting the expensive work off the main actor was never addressed, only the size of that work.
+
+A first attempt marked the heavy function `nonisolated static`, which was not enough, for two separate reasons.
+
+**Reason one — `nonisolated` is not the guarantee it looks like.** Under Swift 6.2's approachable-concurrency defaults (SE-0461), a `nonisolated async` function runs on its *caller's* actor rather than hopping to the global pool; `@concurrent` is the new way to say "run away from the caller." This project doesn't enable those settings today (no `SWIFT_APPROACHABLE_CONCURRENCY`, no `SWIFT_DEFAULT_ACTOR_ISOLATION` in the pbxproj), so `nonisolated` does still hop here — but new Xcode 26 projects enable them by default, so relying on it plants a regression that would arrive silently, with no diagnostic, the day that setting changes.
+
+**Reason two — the work re-entered the main actor anyway.** The load went through `MediaItem` → `AsyncMetadata`, and `AsyncMetadata.lazySearch(for:)` installs a `Task { @MainActor … }` per key search to republish its update ping. That's correct for its purpose (SwiftUI subscribers mutate view state, so delivery on main is part of that class's contract) — but it means routing thumbnails through it schedules main-actor work once per row, which is exactly what must not happen for a list.
+
+### The fix
+
+A dedicated `private actor ThumbnailRenderer`, for a reason that survives future compiler changes: actor-isolated work runs on the actor's own executor no matter who calls it. Not a style preference over `nonisolated` — a durability one.
+
+It also **reads the asset directly** rather than through `MediaItem`/`AsyncMetadata`: resolve the bookmark, hold the security scope for just this read, `AVURLAsset.load(.metadata)`, find the artwork item, `load(.dataValue)`, downsample. That path is right for playback — per-key caching, SwiftUI republishing, a scope held for the item's lifetime — but every one of those services is a cost here, and one of them is the bug.
+
+To keep the two paths from drifting, the renderer reuses `AsyncMetadataKey.image.identifiers` rather than restating which identifiers hold artwork. One source of truth, two consumers.
+
+The `.imageData` key and `justLoadDataValue` retrieval approach added in the previous follow-up are **removed**: reading the asset directly made them dead code. They were unmerged additions from the same working session, so this deletes only work that never shipped.
+
+### Also worth knowing
+
+Cancellation now releases its claim in `alreadyAttempted`. Without that, a row scrolling away mid-load would leave the file permanently remembered as "has no art" on the strength of a load that never actually ran.
+
+### Verification steps
+
+1. Open the Playlists tab with several art-bearing albums → no freeze; rows fill in progressively while the list stays scrollable.
+2. Scroll a long History list hard during loading → stays responsive throughout.
+3. Art still appears correctly in both tabs, and still caches (no reload on a second visit).
+4. Scroll a row away *while* its art is loading, then back → it loads rather than being stuck art-less forever.

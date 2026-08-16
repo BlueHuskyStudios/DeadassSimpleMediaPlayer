@@ -188,15 +188,6 @@ public extension AsyncMetadata.RetrievalApproach where Value == DateComponents {
 
 
 
-public extension AsyncMetadata.RetrievalApproach where Value == Data {
-    /// Hands back the metadata's raw bytes without interpreting them.
-    ///
-    /// Useful when the bytes are more valuable than a decoded value — cover art being the motivating case, since decoding it at full size costs orders of magnitude more memory than decoding it straight to the thumbnail size a list row needs.
-    static let justLoadDataValue: Self = loadDataValue { $0 }
-}
-
-
-
 public extension AsyncMetadata.RetrievalApproach where Value == NativeImage {
     /// Assumes the metadata is the raw bytes of an image file, and decodes it as such.
     ///
@@ -284,20 +275,6 @@ public extension AsyncMetadataKey where Value == NativeImage {
     
     /// The media's cover art (or thumbnail, or attached picture).
     static let image = Self(id: "image", retrievalApproach: .dataToNativeImage, identifiers: [
-        .identifier3GPUserDataThumbnail,
-        .iTunesMetadataCoverArt,
-        .id3MetadataAttachedPicture,
-    ])
-}
-
-
-
-public extension AsyncMetadataKey where Value == Data {
-    
-    /// The raw, still-encoded bytes of the media's cover art — the same metadata ``AsyncMetadataKey/image`` decodes, handed over undecoded.
-    ///
-    /// Exists so callers who only need a small rendition (list rows, chiefly) can decode straight to that size instead of materializing a full-size bitmap and shrinking it afterward.
-    static let imageData = Self(id: "imageData", retrievalApproach: .justLoadDataValue, identifiers: [
         .identifier3GPUserDataThumbnail,
         .iTunesMetadataCoverArt,
         .id3MetadataAttachedPicture,
