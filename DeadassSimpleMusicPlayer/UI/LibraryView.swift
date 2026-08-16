@@ -48,9 +48,9 @@ struct LibraryView: View {
     @State
     private var isImportingPlaylist = false
     
-    /// Shared by every row which shows cover art, so scrolling between tabs doesn't re-open the same files.
+    /// Shared by every row which shows cover art, so revisiting a tab doesn't reopen the same files.
     ///
-    /// Owned by this sheet rather than by the session: it's a drawing convenience, not part of anyone's durable state, and letting it die with the sheet keeps decoded art from accumulating for a screen nobody's looking at.
+    /// Owned by this sheet rather than by the session: it's a drawing convenience, not part of anyone's durable state, and letting it die with the sheet keeps decoded art from accumulating for a screen nobody's looking at. Rows await it and keep their own copy of the result; nothing reads it from a `body`.
     @State
     private var artworkCache = ArtworkThumbnailCache()
     
@@ -715,10 +715,14 @@ private struct HistoryEntryArtwork: View {
     
     let artworkCache: ArtworkThumbnailCache
     
+    /// This row's own copy of its art — see ``SavedPlaylistRow/artwork`` for why it's local rather than read from the cache
+    @State
+    private var artwork: NativeImage? = nil
+    
     
     var body: some View {
         Group {
-            if let artwork = artworkCache.thumbnail(for: reference) {
+            if let artwork {
                 Image(nativeImage: artwork)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
@@ -732,7 +736,7 @@ private struct HistoryEntryArtwork: View {
         .clipShape(.rect(cornerRadius: 4))
         
         .task {
-            await artworkCache.loadThumbnailIfNeeded(for: reference)
+            artwork = await artworkCache.thumbnail(for: reference)
         }
     }
 }
@@ -744,6 +748,12 @@ private struct SavedPlaylistRow: View {
     let playlist: SavedPlaylist
     
     let artworkCache: ArtworkThumbnailCache
+    
+    /// This row's own copy of its album art, so the row renders immediately with a placeholder and updates exactly once when art arrives.
+    ///
+    /// Deliberately local rather than read from the cache inside `body`: reading shared observable state here would subscribe every row to every other row's art, and one album finishing would re-render the whole list.
+    @State
+    private var artwork: NativeImage? = nil
     
     
     var body: some View {
@@ -764,16 +774,14 @@ private struct SavedPlaylistRow: View {
         .task {
             // Only albums show art; a hand-made playlist has no single cover to speak for it
             guard .album == playlist.kind else { return }
-            await artworkCache.loadFirstAvailableThumbnail(among: playlist.items)
+            artwork = await artworkCache.firstAvailableThumbnail(among: playlist.items)
         }
     }
     
     
     @ViewBuilder
     private var artworkOrIcon: some View {
-        if .album == playlist.kind,
-           let artwork = artworkCache.firstThumbnail(among: playlist.items)
-        {
+        if let artwork {
             Image(nativeImage: artwork)
                 .resizable()
                 .aspectRatio(contentMode: .fill)

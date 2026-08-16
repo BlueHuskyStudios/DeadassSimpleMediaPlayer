@@ -213,3 +213,37 @@ Cancellation now releases its claim in `alreadyAttempted`. Without that, a row s
 2. Scroll a long History list hard during loading → stays responsive throughout.
 3. Art still appears correctly in both tabs, and still caches (no reload on a second visit).
 4. Scroll a row away *while* its art is loading, then back → it loads rather than being stuck art-less forever.
+
+---
+
+## Follow-up 4 (2026-08-14) — the freeze was SwiftUI re-rendering, not thread-blocking
+
+Follow-up 3 moved the loading off the main actor and **it made no difference to the freeze.** Recording that plainly, because the wrong diagnosis is the more useful part of this entry: "the UI froze during expensive work" is not automatically "the expensive work was on the main thread."
+
+### What was actually wrong
+
+`SavedPlaylistRow` called `artworkCache.firstThumbnail(among:)` **inside its `body`**, reading the cache's `@Observable` state. Two consequences compounded:
+
+1. Every row's body became subscribed to the shared `thumbnails` dictionary, so *any* thumbnail arriving invalidated *every* row that used the cache — not just the row it belonged to.
+2. Each of those re-renders re-walked that album's entire track list, and every lookup hashed a `MediaReference` whose `bookmarkData` is kilobytes of `Data`.
+
+Scanning one 43-track album produces dozens of insertions; each insertion re-rendered every row; each row re-hashed every one of its tracks. That work is on the main thread by definition — it's view rendering — which is why moving the *loading* off main changed nothing.
+
+### The fix
+
+Rows now own their art as local `@State`, starting `nil` (so the placeholder renders immediately) and set exactly once when the load returns. Nothing reads the cache from a `body` anymore, so one row's art arriving can no longer invalidate any other row.
+
+That removed the reason for the cache to be observable at all, which simplified it considerably: `ArtworkThumbnailCache` and the separate `ThumbnailRenderer` collapsed into **one `actor`** that simply returns values. It keeps the guarantee from follow-up 3 — actor-isolated work runs on the actor's own executor regardless of caller, which `nonisolated async` will stop guaranteeing under Swift 6.2's approachable-concurrency defaults — while dropping the `@MainActor` half that existed only to feed observation.
+
+Cancellation now also stops an album scan early, so a row scrolled away mid-scan doesn't keep opening the rest of that album's tracks.
+
+### The general lesson worth keeping
+
+Reading shared observable state from inside a `body` couples every reader to every writer. For a per-row resource, that coupling turns N independent loads into N² renders. Local `@State` fed by `.task` keeps each row's update to itself — and, incidentally, is what makes a placeholder possible at all, since the row has something to render before the value exists.
+
+### Verification steps
+
+1. Open the tab showing albums with art → the list appears immediately with placeholder icons, art fills in per row, list stays scrollable throughout.
+2. Same for History.
+3. Revisit a tab → art is still there, no reloading.
+4. Scroll a row away mid-load and back → it loads rather than being stuck without art.
