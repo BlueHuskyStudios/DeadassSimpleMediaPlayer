@@ -192,7 +192,7 @@ private extension MediaPlayerView {
                 metadataView
             }
         }
-        .background(Color(.systemGray6))
+        .background(Color(.secondarySystemBackground))
         .background(ignoresSafeAreaEdges: .all)
         
         

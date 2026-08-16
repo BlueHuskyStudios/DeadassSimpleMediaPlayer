@@ -14,7 +14,7 @@ public extension NativeImage {
     /// The name of the app's stand-in cover art in the asset catalog.
     ///
     /// Kept as a constant so there's exactly one string to change if the asset is ever renamed.
-    static let placeholderArtAssetName = "Placeholder art"
+    static let placeholderArtAssetName = "Placeholder artwork 2026-1"
     
     
     /// The app's own artwork, shown in place of cover art for media which carries none.
