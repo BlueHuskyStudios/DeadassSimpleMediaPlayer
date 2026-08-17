@@ -98,7 +98,7 @@ public actor ArtworkThumbnailCache {
             }
         }
         
-        guard let assetMetadata = try? await AVURLAsset(url: url).load(.metadata) else {
+        guard let assetMetadata = try? await AVURLAsset(url: url).load(.metadata, isolation: ArtworkLoadQueue.shared) else {
             return nil
         }
         
@@ -109,7 +109,7 @@ public actor ArtworkThumbnailCache {
                   guard let identifier = item.identifier else { return false }
                   return artworkIdentifiers.contains(identifier)
               }),
-              let data = try? await artworkMetadata.load(.dataValue)
+              let data = try? await artworkMetadata.load(.dataValue, isolation: ArtworkLoadQueue.shared)
         else {
             return nil // No embedded art
         }
@@ -121,4 +121,13 @@ public actor ArtworkThumbnailCache {
         
         return thumbnail
     }
+}
+
+
+
+@globalActor
+internal final actor ArtworkLoadQueue: GlobalActor {
+    public static let shared = ActorType()
+    
+    public typealias ActorType = ArtworkLoadQueue
 }

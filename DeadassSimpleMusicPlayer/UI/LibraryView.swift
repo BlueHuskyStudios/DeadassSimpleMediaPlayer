@@ -10,6 +10,7 @@ import TipKit
 import UniformTypeIdentifiers
 
 import CollectionTools
+import CrossKitTypes
 import SimpleLogging
 import Howl
 
@@ -771,10 +772,18 @@ private struct SavedPlaylistRow: View {
                 .foregroundStyle(.secondary)
         }
         
-        .task {
+        .task { @ArtworkLoadQueue in
             // Only albums show art; a hand-made playlist has no single cover to speak for it
-            guard .album == playlist.kind else { return }
-            artwork = await artworkCache.firstAvailableThumbnail(among: playlist.items)
+            switch playlist.kind {
+            case .userCreated: return
+            case .album: break
+            }
+            
+            let loadedArtowrk = await artworkCache.firstAvailableThumbnail(among: playlist.items)
+                
+            await MainActor.run {
+                self.artwork = loadedArtowrk
+            }
         }
     }
     
