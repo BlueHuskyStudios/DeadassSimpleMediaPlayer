@@ -14,7 +14,7 @@ The following is a list of all LLMs used in the creation & maintenance of Deadas
 
 - Claude
     - 5 Fable - Writing code to unblock me, minor feature work 
-    - 5 Opus - Writing code to unblock me, minor bug work
+    - 5 Opus - Writing code to unblock me, minor bug & feature work
     - 5 Sonnet - Searches, minor algorithmic decisions
     - 4.8 Opus - Writing code to unblock me
 - GPT-OSS - Minor algorithmic decisions
