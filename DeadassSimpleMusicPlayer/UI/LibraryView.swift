@@ -717,7 +717,7 @@ private struct QueueEntryRow: View {
 private struct AlbumArtworkThumbnail: View {
     
     /// Loads the art, and how. Different rows have different amounts to go on: a history entry knows its one file, while an album has to find whichever of its tracks carries the cover.
-    let source: Source
+    let source: Source?
     
     let artworkCache: ArtworkThumbnailCache
     
@@ -750,7 +750,7 @@ private struct AlbumArtworkThumbnail: View {
         .clipShape(.rect(cornerRadius: size * Self.cornerRadiusToSizeRatio))
         
         .task { @ArtworkLoadQueue in
-            let loadedArtwork = await source.loadArtwork(from: artworkCache)
+            let loadedArtwork = await source?.loadArtwork(from: artworkCache)
             
             await MainActor.run {
                 self.artwork = loadedArtwork
@@ -767,9 +767,6 @@ private struct AlbumArtworkThumbnail: View {
     /// Where a row's cover art comes from
     enum Source {
         
-        /// This row has no art to look for, and should just show its fallback icon
-        case none
-        
         /// One specific file's own embedded art
         case singleFile(MediaReference)
         
@@ -777,11 +774,12 @@ private struct AlbumArtworkThumbnail: View {
         case firstAvailableAmong([MediaReference])
         
         
+        /// Attempts to load the artwork at this source from the given cache
+        ///
+        /// - Parameter cache: The cache which might contain the artwork
+        /// - Returns: The found artwork, or `nil` if it wasn't found
         func loadArtwork(from cache: ArtworkThumbnailCache) async -> NativeImage? {
             switch self {
-            case .none:
-                nil
-                
             case .singleFile(let reference):
                 await cache.thumbnail(for: reference)
                 
@@ -823,7 +821,7 @@ private struct SavedPlaylistRow: View {
     
     
     /// Only albums show art; a hand-made playlist has no single cover to speak for it.
-    private var artworkSource: AlbumArtworkThumbnail.Source {
+    private var artworkSource: AlbumArtworkThumbnail.Source? {
         switch playlist.kind {
         case .userCreated: .none
         case .album:       .firstAvailableAmong(playlist.items)

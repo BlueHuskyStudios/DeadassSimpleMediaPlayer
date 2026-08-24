@@ -393,7 +393,7 @@ private extension MediaPlayerView {
             return
         }
         
-        currentArtwork = ((try? metadata(.image)?.value) ?? nil)
+        currentArtwork = (try? metadata(.image)?.value)
             ?? .placeholderArt
     }
     
