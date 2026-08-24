@@ -188,12 +188,14 @@ public extension AsyncMetadata.RetrievalApproach where Value == DateComponents {
 
 
 
-//#16: this will be used soon, but the implementation below crashes for some reason – Ky, 2026-08-08
-//public extension AsyncMetadata.RetrievalApproach where Value == UIImage {
-//    static let dataToUiImage: Self = loadDataValue { unparsedData in
-//        UIImage(data: unparsedData)
-//    }
-//}
+public extension AsyncMetadata.RetrievalApproach where Value == NativeImage {
+    /// Assumes the metadata is the raw bytes of an image file, and decodes it as such.
+    ///
+    /// Written against `NativeImage` rather than `UIImage` so this still compiles if this app ever targets macOS; both it and `NSImage` offer `init?(data:)`.
+    static let dataToNativeImage: Self = loadDataValue { unparsedData in
+        NativeImage(data: unparsedData)
+    }
+}
 
 
 // MARK: Default keys
@@ -272,7 +274,7 @@ public extension AsyncMetadataKey where Value == Int {
 public extension AsyncMetadataKey where Value == NativeImage {
     
     /// The media's cover art (or thumbnail, or attached picture).
-    static let image = Self(id: "image", /*retrievalApproach: .dataToUiImage,*/ identifiers: [ // TODO: This is where we will fix #16, but uncommenting this right now causes crash-on-load. Postponing for its own branch – Ky, 2026-08-07
+    static let image = Self(id: "image", retrievalApproach: .dataToNativeImage, identifiers: [
         .identifier3GPUserDataThumbnail,
         .iTunesMetadataCoverArt,
         .id3MetadataAttachedPicture,

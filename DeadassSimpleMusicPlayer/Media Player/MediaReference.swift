@@ -25,6 +25,14 @@ public struct MediaReference: Codable, Hashable, Sendable {
     ///
     /// Kept alongside the bookmark so the file can still be named in UI and text exports (like M3U8) even when the bookmark no longer resolves.
     public var filename: String
+    
+    
+    /// Hashes only the filename, even though equality still compares everything.
+    ///
+    /// That's a valid narrowing — equal references necessarily have equal filenames, which is all `Hashable` requires — and a worthwhile one: `bookmarkData` runs to kilobytes, so the synthesized hash walked all of it on every dictionary lookup and every set insertion. Filenames colliding across folders is fine; `==` still separates them.
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(filename)
+    }
 }
 
 
