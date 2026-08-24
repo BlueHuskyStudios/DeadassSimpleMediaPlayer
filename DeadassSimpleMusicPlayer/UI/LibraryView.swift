@@ -10,6 +10,7 @@ import TipKit
 import UniformTypeIdentifiers
 
 import CollectionTools
+import CrossKitTypes
 import SimpleLogging
 import Howl
 
@@ -47,6 +48,12 @@ struct LibraryView: View {
     
     @State
     private var isImportingPlaylist = false
+    
+    /// Shared by every row which shows cover art, so revisiting a tab doesn't reopen the same files.
+    ///
+    /// Owned by this sheet rather than by the session: it's a drawing convenience, not part of anyone's durable state, and letting it die with the sheet keeps decoded art from accumulating for a screen nobody's looking at. Rows await it and keep their own copy of the result; nothing reads it from a `body`.
+    @State
+    private var artworkCache = ArtworkThumbnailCache()
     
     /// A fully-prepared export awaiting the user's choice of destination; non-`nil` is what presents the exporter
     @State
@@ -368,7 +375,7 @@ private extension LibraryView {
                                 dismiss() // Their goal (play that playlist) is accomplished; get out of the way
                             }
                         } label: {
-                            SavedPlaylistRow(playlist: playlist)
+                            SavedPlaylistRow(playlist: playlist, artworkCache: artworkCache)
                         }
                         .buttonStyle(.plain)
                         
@@ -565,6 +572,11 @@ private extension LibraryView {
                         }
                     } label: {
                         HStack {
+                            AlbumArtworkThumbnail(
+                                source: .singleFile(historyEntry.reference),
+                                artworkCache: artworkCache,
+                                fallbackSystemImage: "music.note")
+                            
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(historyEntry.displayName)
                                     .lineLimit(1)
@@ -697,17 +709,104 @@ private struct QueueEntryRow: View {
 
 
 
-/// One saved playlist: a kind-appropriate icon, its name, and how much is in it
+/// Cover art for a row, or a stand-in icon holding the same space until (or unless) art arrives.
+///
+/// Always occupies its slot whether or not art is found, so a list doesn't jitter as thumbnails resolve while it's being scrolled.
+///
+/// Owning one type for every row's artwork is what keeps corner radius, size, and fallback icon from drifting apart between the places art is shown — they did drift, before this existed.
+private struct AlbumArtworkThumbnail: View {
+    
+    /// Loads the art, and how. Different rows have different amounts to go on: a history entry knows its one file, while an album has to find whichever of its tracks carries the cover.
+    let source: Source?
+    
+    let artworkCache: ArtworkThumbnailCache
+    
+    /// Shown until art arrives, and kept if none ever does
+    let fallbackSystemImage: String
+    
+    /// The length of each side, in points
+    var size: CGFloat = 32
+    
+    /// This row's own copy of its art, once loaded. Starts `nil` so the row can draw its fallback icon immediately instead of waiting.
+    ///
+    /// Each row keeps its own copy on purpose. If rows instead asked the shared cache for art while drawing, SwiftUI would treat every row as depending on that cache — so one row's art arriving would redraw all of them.
+    @State
+    private var artwork: NativeImage? = nil
+    
+    
+    var body: some View {
+        Group {
+            if let artwork {
+                Image(nativeImage: artwork)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            }
+            else {
+                Image(systemName: fallbackSystemImage)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(.rect(cornerRadius: size * Self.cornerRadiusToSizeRatio))
+        
+        .task { @ArtworkLoadQueue in
+            let loadedArtwork = await source?.loadArtwork(from: artworkCache)
+            
+            await MainActor.run {
+                self.artwork = loadedArtwork
+            }
+        }
+    }
+    
+    
+    /// Chosen so art scales its rounding with it, rather than looking sharper the bigger it gets
+    private static let cornerRadiusToSizeRatio: CGFloat = 1/8
+    
+    
+    
+    /// Where a row's cover art comes from
+    enum Source {
+        
+        /// One specific file's own embedded art
+        case singleFile(MediaReference)
+        
+        /// The art of whichever of these files carries any — for an album, whose tracks share one cover
+        case firstAvailableAmong([MediaReference])
+        
+        
+        /// Attempts to load the artwork at this source from the given cache
+        ///
+        /// - Parameter cache: The cache which might contain the artwork
+        /// - Returns: The found artwork, or `nil` if it wasn't found
+        func loadArtwork(from cache: ArtworkThumbnailCache) async -> NativeImage? {
+            switch self {
+            case .singleFile(let reference):
+                await cache.thumbnail(for: reference)
+                
+            case .firstAvailableAmong(let references):
+                await cache.firstAvailableThumbnail(among: references)
+            }
+        }
+    }
+}
+
+
+
+/// One saved playlist: its cover art or a kind-appropriate icon, its name, and how much is in it
 private struct SavedPlaylistRow: View {
     
     let playlist: SavedPlaylist
     
+    let artworkCache: ArtworkThumbnailCache
+    
     
     var body: some View {
         HStack {
-            Image(systemName: iconName)
-                .foregroundStyle(.secondary)
-                .frame(width: 24)
+            AlbumArtworkThumbnail(
+                source: artworkSource,
+                artworkCache: artworkCache,
+                fallbackSystemImage: iconName,
+                size: 24)
             
             Text(playlist.name)
                 .lineLimit(1)
@@ -717,6 +816,15 @@ private struct SavedPlaylistRow: View {
             Text("^[\(playlist.items.count) item](inflect: true)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+    }
+    
+    
+    /// Only albums show art; a hand-made playlist has no single cover to speak for it.
+    private var artworkSource: AlbumArtworkThumbnail.Source? {
+        switch playlist.kind {
+        case .userCreated: .none
+        case .album:       .firstAvailableAmong(playlist.items)
         }
     }
     
