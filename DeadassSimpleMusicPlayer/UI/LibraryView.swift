@@ -572,7 +572,10 @@ private extension LibraryView {
                         }
                     } label: {
                         HStack {
-                            HistoryEntryArtwork(reference: historyEntry.reference, artworkCache: artworkCache)
+                            AlbumArtworkThumbnail(
+                                source: .singleFile(historyEntry.reference),
+                                artworkCache: artworkCache,
+                                fallbackSystemImage: "music.note")
                             
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(historyEntry.displayName)
@@ -706,17 +709,27 @@ private struct QueueEntryRow: View {
 
 
 
-/// One saved playlist: a kind-appropriate icon, its name, and how much is in it
-/// A history row's cover art, or a neutral placeholder holding the same space while (or if) none arrives.
+/// Cover art for a row, or a stand-in icon holding the same space until (or unless) art arrives.
 ///
-/// Always occupies its slot, art or not, so a scrolling list of history entries doesn't jitter as thumbnails resolve.
-private struct HistoryEntryArtwork: View {
+/// Always occupies its slot whether or not art is found, so a list doesn't jitter as thumbnails resolve while it's being scrolled.
+///
+/// Owning one type for every row's artwork is what keeps corner radius, size, and fallback icon from drifting apart between the places art is shown — they did drift, before this existed.
+private struct AlbumArtworkThumbnail: View {
     
-    let reference: MediaReference
+    /// Loads the art, and how. Different rows have different amounts to go on: a history entry knows its one file, while an album has to find whichever of its tracks carries the cover.
+    let source: Source
     
     let artworkCache: ArtworkThumbnailCache
     
-    /// This row's own copy of its art — see ``SavedPlaylistRow/artwork`` for why it's local rather than read from the cache
+    /// Shown until art arrives, and kept if none ever does
+    let fallbackSystemImage: String
+    
+    /// The length of each side, in points
+    var size: CGFloat = 32
+    
+    /// This row's own copy of its art, once loaded. Starts `nil` so the row can draw its fallback icon immediately instead of waiting.
+    ///
+    /// Each row keeps its own copy on purpose. If rows instead asked the shared cache for art while drawing, SwiftUI would treat every row as depending on that cache — so one row's art arriving would redraw all of them.
     @State
     private var artwork: NativeImage? = nil
     
@@ -729,38 +742,73 @@ private struct HistoryEntryArtwork: View {
                     .aspectRatio(contentMode: .fill)
             }
             else {
-                Image(systemName: "music.note")
+                Image(systemName: fallbackSystemImage)
                     .foregroundStyle(.secondary)
             }
         }
-        .frame(width: 32, height: 32)
-        .clipShape(.rect(cornerRadius: 4))
+        .frame(width: size, height: size)
+        .clipShape(.rect(cornerRadius: size * Self.cornerRadiusToSizeRatio))
         
-        .task {
-            artwork = await artworkCache.thumbnail(for: reference)
+        .task { @ArtworkLoadQueue in
+            let loadedArtwork = await source.loadArtwork(from: artworkCache)
+            
+            await MainActor.run {
+                self.artwork = loadedArtwork
+            }
+        }
+    }
+    
+    
+    /// Chosen so art scales its rounding with it, rather than looking sharper the bigger it gets
+    private static let cornerRadiusToSizeRatio: CGFloat = 1/8
+    
+    
+    
+    /// Where a row's cover art comes from
+    enum Source {
+        
+        /// This row has no art to look for, and should just show its fallback icon
+        case none
+        
+        /// One specific file's own embedded art
+        case singleFile(MediaReference)
+        
+        /// The art of whichever of these files carries any — for an album, whose tracks share one cover
+        case firstAvailableAmong([MediaReference])
+        
+        
+        func loadArtwork(from cache: ArtworkThumbnailCache) async -> NativeImage? {
+            switch self {
+            case .none:
+                nil
+                
+            case .singleFile(let reference):
+                await cache.thumbnail(for: reference)
+                
+            case .firstAvailableAmong(let references):
+                await cache.firstAvailableThumbnail(among: references)
+            }
         }
     }
 }
 
 
 
+/// One saved playlist: its cover art or a kind-appropriate icon, its name, and how much is in it
 private struct SavedPlaylistRow: View {
     
     let playlist: SavedPlaylist
     
     let artworkCache: ArtworkThumbnailCache
     
-    /// This row's own copy of its album art, so the row renders immediately with a placeholder and updates exactly once when art arrives.
-    ///
-    /// Deliberately local rather than read from the cache inside `body`: reading shared observable state here would subscribe every row to every other row's art, and one album finishing would re-render the whole list.
-    @State
-    private var artwork: NativeImage? = nil
-    
     
     var body: some View {
         HStack {
-            artworkOrIcon
-                .frame(width: 24, height: 24)
+            AlbumArtworkThumbnail(
+                source: artworkSource,
+                artworkCache: artworkCache,
+                fallbackSystemImage: iconName,
+                size: 24)
             
             Text(playlist.name)
                 .lineLimit(1)
@@ -771,34 +819,14 @@ private struct SavedPlaylistRow: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
-        
-        .task { @ArtworkLoadQueue in
-            // Only albums show art; a hand-made playlist has no single cover to speak for it
-            switch playlist.kind {
-            case .userCreated: return
-            case .album: break
-            }
-            
-            let loadedArtowrk = await artworkCache.firstAvailableThumbnail(among: playlist.items)
-                
-            await MainActor.run {
-                self.artwork = loadedArtowrk
-            }
-        }
     }
     
     
-    @ViewBuilder
-    private var artworkOrIcon: some View {
-        if let artwork {
-            Image(nativeImage: artwork)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .clipShape(.rect(cornerRadius: 3))
-        }
-        else {
-            Image(systemName: iconName)
-                .foregroundStyle(.secondary)
+    /// Only albums show art; a hand-made playlist has no single cover to speak for it.
+    private var artworkSource: AlbumArtworkThumbnail.Source {
+        switch playlist.kind {
+        case .userCreated: .none
+        case .album:       .firstAvailableAmong(playlist.items)
         }
     }
     

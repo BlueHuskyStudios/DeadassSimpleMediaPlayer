@@ -39,24 +39,25 @@ struct Player: UIViewControllerRepresentable {
     
     
     func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
-        syncArtwork(in: uiViewController)
+        syncArtwork(in: uiViewController, coordinator: context.coordinator)
     }
     
     
     /// Reconciles the cover-art image view inside the controller's content overlay: creates it when first needed, updates it when the art changes, removes it when there's none.
     ///
-    /// `contentOverlayView` is the layer between the video content and the playback controls, so art placed here can never cover the transport controls nor intercept touches meant for them. The view is found by tag rather than stored, since this representable is a value type recreated on every update.
-    private func syncArtwork(in playerViewController: AVPlayerViewController) {
+    /// `contentOverlayView` is the layer between the video content and the playback controls, so art placed here can never cover the transport controls nor intercept touches meant for them.
+    ///
+    /// The view is held by the coordinator rather than found among the overlay's subviews. This representable is a value type rebuilt on every update, so it can't hold the reference itself — but the coordinator survives across updates, which is exactly what it's for.
+    private func syncArtwork(in playerViewController: AVPlayerViewController, coordinator: Coordinator) {
         guard let overlay = playerViewController.contentOverlayView else { return }
         
-        let existingImageView = overlay.viewWithTag(Self.artworkViewTag) as? UIImageView
-        
         guard let artwork else {
-            existingImageView?.removeFromSuperview()
+            coordinator.artworkImageView?.removeFromSuperview()
+            coordinator.artworkImageView = nil
             return
         }
         
-        guard let imageView = existingImageView ?? makeArtworkView(in: overlay) else { return }
+        let imageView = coordinator.artworkImageView ?? makeArtworkView(in: overlay, coordinator: coordinator)
         
         if imageView.image !== artwork {
             imageView.image = artwork
@@ -64,13 +65,12 @@ struct Player: UIViewControllerRepresentable {
     }
     
     
-    private func makeArtworkView(in overlay: UIView) -> UIImageView? {
+    private func makeArtworkView(in overlay: UIView, coordinator: Coordinator) -> UIImageView {
         let imageView = UIImageView()
-        imageView.tag = Self.artworkViewTag
         imageView.contentMode = .scaleAspectFit
         imageView.translatesAutoresizingMaskIntoConstraints = false
         
-        // Opaque on purpose: the image view spans the whole overlay but its art is fitted inside, so without a fill, AVKit's own audio placeholder shows through the letterbox on either side. Black matches the letterboxing convention this region already uses for video.
+        // Opaque on purpose: the image view spans the whole overlay but its art is fitted inside, so without a fill, AVKit's own audio placeholder shows through the letterbox on either side. This matches the background the rest of the player screen already uses.
         imageView.backgroundColor = .secondarySystemBackground
         
         overlay.addSubview(imageView)
@@ -82,12 +82,10 @@ struct Player: UIViewControllerRepresentable {
             imageView.bottomAnchor  .constraint(equalTo: overlay.bottomAnchor),
         ])
         
+        coordinator.artworkImageView = imageView
+        
         return imageView
     }
-    
-    
-    /// Identifies the cover-art image view among the overlay's subviews across updates, since a value-type representable can't hold a reference to it
-    private static let artworkViewTag = 0xA27
     
     
     func makeCoordinator() -> Coordinator {
@@ -96,11 +94,16 @@ struct Player: UIViewControllerRepresentable {
     
     
     
-    /// Coordinates the status of the player between UIKit/AVKit and SwiftUI
+    /// Coordinates the status of the player between UIKit/AVKit and SwiftUI, and holds onto the views this representable can't
     final class Coordinator: NSObject, AVPlayerViewControllerDelegate {
         
         @Binding
         var pipStatus: PipStatus
+        
+        /// The cover-art view added to the player's content overlay, if there is one right now.
+        ///
+        /// Lives here because `Player` is a value type recreated on every update and can't keep a reference of its own, while this coordinator persists for as long as the player view does.
+        var artworkImageView: UIImageView?
         
         init(pipStatus: Binding<PipStatus>) {
             self._pipStatus = pipStatus
@@ -114,7 +117,7 @@ struct Player: UIViewControllerRepresentable {
     
     
     
-    /// Statuses of a plaayer's picture-in-picture mode
+    /// Statuses of a player's picture-in-picture mode
     enum PipStatus {
         
         /// PIP status isn't known

@@ -376,7 +376,7 @@ private extension MediaPlayerView {
             
             guard playerItem === player.currentItem else { return }
             
-            currentItemHasVideoTrack = !videoTracks.isEmpty
+            currentItemHasVideoTrack = videoTracks.isNotEmpty
             refreshArtwork()
         }
     }

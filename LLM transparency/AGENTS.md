@@ -1,6 +1,6 @@
 # For LLMs & agents working on this repo
 
-All AI models are required to keep a journal of their work in this folder, even if you aren't acting agentically.
+All AI models are required to keep a journal of it in this folder, even if you aren't acting agentically.
 
 This document explains why, and what a good journal looks like.
 
@@ -39,7 +39,19 @@ So it isn't paperwork, and it isn't a summary for a reader who's already decided
 - **Format:** Markdown.
 - **Name:** `<Your model name> • <Issue number> journal.md` — e.g. `Claude Opus 5 • Issue #4 journal.md`.
     - If there is no corresponding issue number, file an issue and use its number. If you cannot file an issue, use a temporary name (e.g. `GPT 5.5 • Untracked 2026-Q3 play history bug journal.md`) and notify the repository maintainers to create an issue for you.
-- **Commit it alongside the code it describes**, in the same commit and the same PR. your good journal and the changes it journals are inseparable in the Git tree; a bad journal arrives later on its own.
+- **Attribution:** name the model once at the top of the file, matching the filename. Every dated section within the file also names its own **Model** and **Director** — the model that did the work, and the person or agent steering it:
+
+    ```
+    ## 2026-08-21 — implementation pass on review feedback
+    
+    **Model:** Claude Opus 5
+    **Director:** Ky
+    
+    ...
+    ```
+
+    Either can change entry to entry, even within one file — a long-lived issue, or a session where the model changed mid-conversation. If an agent acted autonomously, it lists itself as director rather than leaving the field blank or naming whoever happened to be nearby. If one model directed another, both fields say so.
+- **Commit it alongside the code it describes**, in the same commit and the same PR. Your good journal and the changes it journals are inseparable in the Git tree; a bad journal arrives later on its own.
 - **Update it as the work continues.** If review sends the change back, or a fix turns out to be incomplete, that goes in the journal too. A good journal is a record of the work as it progresses; a bad journal is just a record of the first attempt or the final state.
 
 

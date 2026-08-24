@@ -30,13 +30,23 @@ public actor ArtworkThumbnailCache {
     
     /// The longest side, in pixels, of a thumbnail this cache produces.
     ///
-    /// Expressed in pixels rather than points on purpose: this type has no business reaching for the screen it'll be drawn on, and over-decoding slightly is harmless at this size. The default covers a 44pt row on a 3× display, which is the largest current devices ask for.
+    /// Expressed in pixels rather than points on purpose: this type has no business reaching for the screen it'll be drawn on, and over-decoding slightly is harmless at this size.
     private let maxPixelSize: Int
     
     
-    public init(maxPixelSize: Int = 44 * 3) {
+    public init(maxPixelSize: Int = ArtworkThumbnailCache.defaultMaxPixelSize) {
         self.maxPixelSize = maxPixelSize
     }
+    
+    
+    /// The height of one standard list row, in points. Thumbnails never need to be larger than the row they sit in.
+    private static let standardRowHeightInPoints = 44
+    
+    /// The most pixels current devices pack into a point. Decoding for the densest screen means the same thumbnail stays sharp on every screen.
+    private static let densestDisplayScale = 3
+    
+    /// Large enough for a standard row on the densest display available, which is the largest any current device asks for.
+    public static let defaultMaxPixelSize = standardRowHeightInPoints * densestDisplayScale
     
     
     /// This file's cover art at thumbnail size, reading it only if it hasn't been read before.
@@ -47,9 +57,12 @@ public actor ArtworkThumbnailCache {
             return alreadyLoaded
         }
         
-        guard alreadyAttempted.insert(reference).inserted else {
+        guard !alreadyAttempted.contains(reference) else {
             return nil // Looked at before and found nothing
         }
+        
+        // Safe to check and then insert as two steps rather than one: there's no `await` between them, so actor isolation guarantees no other call can slip in and claim this same file partway through
+        alreadyAttempted.insert(reference)
         
         guard let thumbnail = await read(reference) else {
             // Cancellation releases its claim; a genuine "no art here" keeps it, so a file is never opened twice
@@ -125,6 +138,11 @@ public actor ArtworkThumbnailCache {
 
 
 
+/// The executor that cover-art loading runs on.
+///
+/// Exists because SwiftUI's `.task { }` inherits main-actor isolation from `View.body`, so work started there runs on the main thread unless something explicitly says otherwise. Annotating a task with this global actor is that "otherwise": it moves bookmark resolution, asset reading, and image decoding off the main thread, where a `dispatchPrecondition(condition: .notOnQueue(.main))` inside the load confirms they land.
+///
+/// Being a single serial actor also caps how much of this work happens at once, which matters because decoding several full-size covers concurrently costs far more memory than doing them one after another.
 @globalActor
 internal final actor ArtworkLoadQueue: GlobalActor {
     public static let shared = ActorType()

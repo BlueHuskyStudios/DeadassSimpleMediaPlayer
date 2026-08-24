@@ -1,16 +1,20 @@
 # Issue #16 — Album art isn't displayed anywhere
 
-**Model:** Claude Opus 5, directed by Ky
+**Model:** Claude Opus 5
 **Branch base:** `nightly`, after the #4 merge
-**Started:** 2026-08-14 (checked via `date`)
 
 ---
 
-## The report
+## 2026-08-14 — investigation and initial implementation
+
+**Model:** Claude Opus 5
+**Director:** Ky
+
+### The report
 
 Songs with album art should display that art on the player and on remote controls. It appears in neither.
 
-## First finding: this is two separate problems wearing one symptom
+### First finding: this is two separate problems wearing one symptom
 
 Read the whole artwork path before touching anything. The two surfaces fail for entirely different reasons, and fixing one does nothing for the other.
 
@@ -18,7 +22,7 @@ Read the whole artwork path before touching anything. The two surfaces fail for 
 
 **On-screen player** — there is no artwork display code. Not broken, absent. `AVPlayerViewController` shows the QuickTime glyph for audio-only media because nothing is drawn over it. This surface needs to be built.
 
-## Second finding: the crash Ky hit may already be fixed
+### Second finding: the crash Ky hit may already be fixed
 
 The `.image` key currently has its retrieval approach commented out, with a note (2026-08-07) saying uncommenting causes crash-on-load, postponed to its own branch.
 
@@ -32,7 +36,7 @@ The crash was only ever reachable when `.image` resolved a real image, which is 
 
 Recording this as a hypothesis rather than a conclusion because I can't reproduce the original crash to confirm that's what it was. If a crash-on-load still occurs after this change, that hypothesis is wrong and the real cause is still unfound — the next place I'd look is static-initialization order between the two constrained-extension `static let`s (`AsyncMetadataKey<NativeImage>.image` referencing `RetrievalApproach<…>.dataToUiImage`), since Swift initializes those lazily via `swift_once` and this project has a documented history of compiler-level surprises.
 
-## Third finding: the commented-out code would break the macOS door
+### Third finding: the commented-out code would break the macOS door
 
 `dataToUiImage` was written as `extension AsyncMetadata.RetrievalApproach where Value == UIImage`, using `UIImage(data:)`.
 
@@ -42,9 +46,9 @@ Since `NSImage` also has `init?(data:)`, writing it against `NativeImage` costs 
 
 ---
 
-## Changes
+### Changes
 
-### 1. `Media processing/AsyncMetadata.swift` — enable artwork retrieval
+#### 1. `Media processing/AsyncMetadata.swift` — enable artwork retrieval
 
 Uncommented the retrieval approach, rewritten against `NativeImage`, and wired to the `.image` key.
 
@@ -53,7 +57,7 @@ Uncommented the retrieval approach, rewritten against `NativeImage`, and wired t
 
 This alone should fix the **remote controls** half, since `setupNowPlaying()` was already waiting on this value.
 
-### 2. `UI/Player.swift` — a surface to draw art on
+#### 2. `UI/Player.swift` — a surface to draw art on
 
 `Player` gains an `artwork: NativeImage?` parameter, hosted in `AVPlayerViewController.contentOverlayView` — the layer between the video content and the playback controls, so art can never cover the transport controls nor swallow touches meant for them.
 
@@ -61,7 +65,7 @@ Reconciliation (`syncArtwork(in:)`) runs in `updateUIViewController` and is idem
 
 Aspect-fit, no background fill. Letterboxing shows whatever `AVPlayerViewController` draws behind it rather than a black box of my choosing — the visual identity of that region belongs to the upcoming transport-controls redesign, not to this bugfix.
 
-### 3. `UI/MediaPlayerView.swift` — deciding when art appears
+#### 3. `UI/MediaPlayerView.swift` — deciding when art appears
 
 Two pieces of state: `currentArtwork`, and `currentItemHasVideoTrack` which gates it.
 
@@ -71,13 +75,13 @@ Two pieces of state: `currentArtwork`, and `currentItemHasVideoTrack` which gate
 
 `refreshArtwork()` is called from both the track inspection and the metadata-update hook, because either can be the last to arrive — the image search and the track load race, and whichever finishes second is the one that completes the picture.
 
-## Things deliberately not done
+### Things deliberately not done
 
 - **No blurred full-bleed backdrop.** Discussed with Ky earlier as a possible direction, but it belongs to the pinned-controls redesign, where Reduce Transparency and Reduce Motion also need answering. This ticket restores the missing art; it doesn't design around it.
 - **No artwork in the Library's queue/album rows.** Would be nice, but it's a feature, not this bug, and it needs a thumbnail-caching story before a long queue starts decoding dozens of full-size images.
 - **No caching or downsampling.** Cover art is decoded per track and held only for the current one. If large embedded art turns out to cost noticeable memory, downsampling at decode time is the fix — deliberately not pre-optimized.
 
-## Verification steps
+### Verification steps
 
 1. Play an audio file with embedded art → art appears where the QuickTime glyph was, and on the Lock Screen / Control Center.
 2. **No crash on load.** This is the hypothesis under test; if it crashes, the postponement note was right about something not found here, and the static-initialization theory above is where to look next.
@@ -89,7 +93,7 @@ Two pieces of state: `currentArtwork`, and `currentItemHasVideoTrack` which gate
 
 **Not compiled in the environment where this was written** — no Xcode available there. Most likely build friction: whether `NativeImage` needs a different import in these two files than `CrossKitTypes`, and the `(try? metadata(.image)?.value) ?? nil` double-optional flattening.
 
-## Outcome
+### Outcome
 
 Verified on device 2026-08-14: art displays on the player and on remote controls. No crash on load — the hypothesis above held, and the `@Sendable` fix from #4 was indeed what had been missing.
 
@@ -98,6 +102,9 @@ One cosmetic artifact observed: because the letterbox area is deliberately unfil
 ---
 
 ## Follow-up (2026-08-14) — cover art in album icons and history rows
+
+**Model:** Claude Opus 5
+**Director:** Ky
 
 Requested after the first pass shipped: show the art that now decodes in more places than just the player — as an album's icon in the Library instead of the generic disc symbol, and in History rows to make the list skimmable.
 
@@ -145,6 +152,9 @@ For albums it stops at the first track that yields art (`loadFirstAvailableThumb
 
 ## Follow-up 2 (2026-08-14) — app placeholder art, and hiding AVKit's
 
+**Model:** Claude Opus 5
+**Director:** Ky
+
 Two requests which turned out to be one change: use the app's own placeholder art (from the asset catalog) for media without cover art, in both the player and remote controls; and stop `AVPlayerViewController`'s default audio placeholder from showing.
 
 They're connected. The AVKit placeholder was visible *because* the artwork overlay had a transparent background and fitted art doesn't fill a 16:9 region — so AVKit's circle showed through the letterbox. Once every audio track has something deliberate to draw (real art or the app's placeholder), that overlay can be opaque, and AVKit's version is covered rather than fought with.
@@ -178,6 +188,9 @@ Fixing it by assuming *audio* first would trade this for a worse artifact: the a
 ---
 
 ## Follow-up 3 (2026-08-14) — the thumbnail loading was on the main thread
+
+**Model:** Claude Opus 5
+**Director:** Ky
 
 Reported: opening the Playlists tab froze the app for a second or two while art loaded. Correct diagnosis, and the fault was in the design above rather than in tuning.
 
@@ -217,6 +230,9 @@ Cancellation now releases its claim in `alreadyAttempted`. Without that, a row s
 ---
 
 ## Follow-up 4 (2026-08-14) — the freeze was SwiftUI re-rendering, not thread-blocking
+
+**Model:** Claude Opus 5
+**Director:** Ky
 
 Follow-up 3 moved the loading off the main actor and **it made no difference to the freeze.** Recording that plainly, because the wrong diagnosis is the more useful part of this entry: "the UI froze during expensive work" is not automatically "the expensive work was on the main thread."
 
