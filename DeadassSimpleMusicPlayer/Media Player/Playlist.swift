@@ -452,6 +452,7 @@ private extension [Playlist.Entry] {
     /// What a folder-imported entry sorts by, most significant first. Comparing two of these is the whole ordering policy for a folder import — see ``Optional/isOrderedBefore(_:)`` for how each field treats "unknown" as "last."
     struct SortKey: Comparable {
         var album: String?
+        var discNumber: Int?
         var trackNumber: Int?
         var contentType: UTType
         var publishedDate: DateComponents?
@@ -461,11 +462,13 @@ private extension [Playlist.Entry] {
         init(describing entry: Element) async {
             if let metadata = entry.mediaItem?.metadata {
                 self.album = (try? await metadata.get(.album))?.nonEmptyOrNil
+                self.discNumber = try? await metadata.get(.discNumber)
                 self.trackNumber = try? await metadata.get(.trackNumber)
                 self.publishedDate = try? await metadata.get(.publishedDate)
             }
             else {
                 self.album = nil
+                self.discNumber = nil
                 self.trackNumber = nil
                 self.publishedDate = nil
             }
@@ -479,6 +482,9 @@ private extension [Playlist.Entry] {
         static func < (lhs: Self, rhs: Self) -> Bool {
             if lhs.album != rhs.album {
                 lhs.album.isOrderedBefore(rhs.album) { $0.localizedStandardCompare($1) == .orderedAscending }
+            }
+            else if lhs.discNumber != rhs.discNumber {
+                lhs.discNumber.isOrderedBefore(rhs.discNumber, areInIncreasingOrder: <)
             }
             else if lhs.trackNumber != rhs.trackNumber {
                 lhs.trackNumber.isOrderedBefore(rhs.trackNumber, areInIncreasingOrder: <)
