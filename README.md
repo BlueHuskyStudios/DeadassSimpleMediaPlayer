@@ -17,6 +17,6 @@ No bullshit, just a good & simple app that plays media files.
 
 [I, Ky,](https://KyLeggiero.me) reviewed all the code in this repo, and wrote the vast majority of it.
 
-Some of it was written using LLMs, either directly writing it or assisting me as I wrote it.
+Some of it was written using LLMs, either directly writing it, or assisting contributors like myself.
 
 Because transparency fucking matters, I'm making sure all of that is documented in the [LLM transparency](./LLM%20transparency) folder of this repo.

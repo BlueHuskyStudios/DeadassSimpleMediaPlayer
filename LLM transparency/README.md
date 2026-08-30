@@ -2,7 +2,7 @@
 
 [I, Ky,](https://KyLeggiero.me) reviewed all the code in this repo, and wrote the vast majority of it.
 
-Some of it was written using LLMs, either directly writing it or assisting me as I wrote it.
+Some of it was written using LLMs, either directly writing it, or assisting contributors like myself.
 
 This folder contains various files which help increase the transparency of that usage.
 
@@ -14,7 +14,7 @@ The following is a list of all LLMs used in the creation & maintenance of Deadas
 
 - Claude
     - 5 Fable - Writing code to unblock me, minor feature work 
-    - 5 Opus - Writing code to unblock me, minor bug work
+    - 5 Opus - Writing code to unblock me, minor bug & feature work
     - 5 Sonnet - Searches, minor algorithmic decisions
     - 4.8 Opus - Writing code to unblock me
 - GPT-OSS - Minor algorithmic decisions
