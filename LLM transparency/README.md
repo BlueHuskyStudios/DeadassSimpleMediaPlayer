@@ -2,7 +2,7 @@
 
 [I, Ky,](https://KyLeggiero.me) reviewed all the code in this repo, and wrote the vast majority of it.
 
-Some of it was written using LLMs, either directly writing it or assisting me as I wrote it.
+Some of it was written using LLMs, either directly writing it, or assisting contributors like myself.
 
 This folder contains various files which help increase the transparency of that usage.
 
