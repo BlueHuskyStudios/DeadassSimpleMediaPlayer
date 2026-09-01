@@ -20,3 +20,12 @@ After package linkage was restored experimentally, the iOS 16 build advanced thr
 With those two local repairs applied, compilation reached a hard compatibility boundary: `ConcurrencyTools` 0.3.1 has a minimum iOS deployment target of 26, while the legacy target resolves to iOS 17 in the current toolchain. Restoring actual iOS 16 compatibility therefore requires a separate dependency and source-compatibility decision. The experimental package-link and app-icon changes were removed from the final patch, and continuous integration was narrowed to the supported Modern scheme. The upstream issue retains this evidence so the legacy target can be retired or repaired deliberately.
 
 Final local verification used Xcode 27 with a fresh derived-data directory, generic iOS Simulator destination, Debug configuration, and code signing disabled. The `Modern (Debug)` scheme completed successfully with exit status 0. The final project diff contains only the two supported-platform corrections; the workflow and this journal are the other proposed files.
+
+## 2026-09-01 — review feedback and scope correction
+
+**Model:** GPT 5.6 Sol
+**Director:** Zhoie
+
+KyNorthstar clarified that the macOS settings are intentional because the in-progress port is tracked in #11, and that the legacy iOS 16 project state is intentionally retained for the work tracked in #72. The earlier conclusion that the Modern target should stop advertising macOS was therefore incorrect.
+
+The supported-platform edits were reverted. No iOS 16 project settings were changed. The pull request now introduces only the GitHub Actions workflow, plus this required journal, and CI continues to build only the `Modern (Debug)` scheme for a generic iOS Simulator.
