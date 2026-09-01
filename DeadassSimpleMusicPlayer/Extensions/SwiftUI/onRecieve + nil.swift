@@ -17,11 +17,6 @@ public extension View {
     /// If the publisher is `nil`, then this function does nothing.
     /// If it isn't `nil`, then this works identically to the one which takes a non-`Optional` publisher.
     ///
-    /// Always returns a single view type (never `_ConditionalContent`). The previous `if let` / `else { self }`
-    /// form changed structural identity when the publisher went from `nil` to non-`nil`, which discarded
-    /// descendant `@State` and re-ran `.task` / `.onAppear` (see issue #40). A never-emitting `Empty`
-    /// publisher keeps one `onReceive` branch so identity stays stable.
-    ///
     /// The given publisher's output is passed to the input of the given action. If the publisher sends `Void`s, then te given action need not take any input.
     ///
     /// - Parameters:
