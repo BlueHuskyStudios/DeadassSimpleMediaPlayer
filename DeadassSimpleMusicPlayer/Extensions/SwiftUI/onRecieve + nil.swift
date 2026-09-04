@@ -22,16 +22,13 @@ public extension View {
     /// - Parameters:
     ///   - publisher: The publisher to listen to
     ///   - action:    The action to take when receiving any values from the given publisher
-    @ViewBuilder
     func onReceive<P>(_ publisher: P?, perform action: @escaping (P.Output) -> Void) -> some View
     where P: Publisher,
           P.Failure == Never
     {
-        if let publisher {
-            onReceive(publisher, perform: action)
-        }
-        else {
-            self
-        }
+        onReceive(
+            publisher?.eraseToAnyPublisher() ?? Empty().eraseToAnyPublisher(),
+            perform: action
+        )
     }
 }
