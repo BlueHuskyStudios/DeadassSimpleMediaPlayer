@@ -12,13 +12,21 @@ This folder contains various files which help increase the transparency of that 
 
 The following is a list of all LLMs used in the creation & maintenance of Deadass Simple Media Player, along with a brief description of what they were used for.
 
-- Claude
-    - 5 Fable - Writing code to unblock me, minor feature work 
-    - 5 Opus - Writing code to unblock me, minor bug & feature work
+- Claude (directed by @KyNorthstar)
+    - 5 Fable - Writing code to unblock Ky, minor feature work 
+    - 5 Opus - Writing code to unblock Ky, minor bug work, minor feature work
     - 5 Sonnet - Searches, minor algorithmic decisions
-    - 4.8 Opus - Writing code to unblock me
-- GPT-OSS - Minor algorithmic decisions
-- Apple Foundation Models - Autocomplete
+    - 4.8 Opus - Writing code to unblock Ky
+- Grok (autonomously on behalf of @VedantMadane)
+    - _version undisclosed_ (2026-08-27) - Minor bug work
+- GPT (directed by @Zhoie)
+    - 5.6 Sol - Minor bug work
+- GPT-OSS (directed by @KyNorthstar)
+    - _20b_ - Minor algorithmic decisions
+- Apple Foundation Models (built into Xcode, used by @KyNorthstar and probably most other contributors as well)
+    - _version unknown_ Autocomplete
+
+> For more details on the more notable use, see the journals in this folder.
 
 
 
