@@ -839,39 +839,6 @@ private struct SavedPlaylistRow: View {
 
 
 
-// MARK: - Sugar
-
-private extension RepeatMode {
-    
-    var displayName: LocalizedStringKey {
-        switch self {
-        case .off:         "Don't loop"
-        case .wholeQueue:  "Loop all"
-        case .currentItem: "Loop one"
-        }
-    }
-    
-    
-    var systemImageName_menuItem: String {
-        switch self {
-        case .off:         "forward.end"
-        case .wholeQueue:  "repeat"
-        case .currentItem: "repeat.1"
-        }
-    }
-    
-    
-    var systemImageName_preview: String {
-        switch self {
-        case .off:         "repeat"
-        case .wholeQueue:  "repeat.circle.fill"
-        case .currentItem: "repeat.1.circle.fill"
-        }
-    }
-}
-
-
-
 // MARK: - Previews
 
 #Preview("Populated") {
