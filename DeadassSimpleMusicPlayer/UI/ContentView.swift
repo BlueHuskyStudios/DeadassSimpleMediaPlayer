@@ -27,10 +27,8 @@ struct ContentView: View {
     private var session = PlayerSession()
     
     var body: some View {
-        @Bindable var session = session
-        
         NavigationStack {
-            MediaPlayerView(currentPlaylist: $session.queue, session: session)
+            MediaPlayerView(session: session)
             
                 .toolbar {
                     ToolbarItemGroup {
@@ -63,10 +61,10 @@ struct ContentView: View {
                             let newEntries = await session.withLoadingMessage("Loading folder…") {
                                 await Playlist.entries(fromUrl: openedUrl, allowRecursion: true)
                             }
-                            session.queue.append(contentsOf: newEntries)
+                            session.nowPlaying.queue.append(contentsOf: newEntries)
                             
                             // A quiet background courtesy, after the music's already going: files sharing album metadata become an album playlist
-                            await session.autoGroupAlbums(from: newEntries)
+                            await session.library.autoGroupAlbums(from: newEntries)
                         }
                         
                     case .failure(let failure):
@@ -84,7 +82,7 @@ struct ContentView: View {
         // Backgrounding is the canonical "the user might never come back" moment, so whatever's pending gets flushed here
         .onChange(of: scenePhase) { _, newPhase in
             if .active != newPhase {
-                session.saveNowPlayingSnapshotNow()
+                session.nowPlaying.saveSnapshotNow()
             }
         }
     }

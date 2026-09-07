@@ -13,9 +13,9 @@ extension PlayerSession {
     #if DEBUG
     static var demo: PlayerSession {
         let demo = Self.init(persisting: false)
-        demo.queue = .demo
-        demo.savedPlaylists = .demo
-        demo.history = .demo
+        demo.nowPlaying.queue = .demo
+        demo.library.savedPlaylists = .demo
+        demo.history.playbackHistory = .demo
         return demo
     }
     #else
