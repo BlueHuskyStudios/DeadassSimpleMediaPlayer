@@ -350,10 +350,11 @@ private extension PlaybackEngine {
             forInterval: CMTime(seconds: 0.5, preferredTimescale: 600),
             queue: .main
         ) { [weak self] time in
+            guard let self else { return }
+            
             MainActor.assumeIsolated {
-                guard let self else { return }
-                currentTime = time.seconds
-                delegate?.playbackEngine(self, playbackPositionDidChangeTo: time.seconds)
+                self.currentTime = time.seconds
+                self.delegate?.playbackEngine(self, playbackPositionDidChangeTo: time.seconds)
             }
         }
     }
