@@ -13,10 +13,11 @@ This folder contains various files which help increase the transparency of that 
 The following is a list of all LLMs used in the creation & maintenance of Deadass Simple Media Player, along with a brief description of what they were used for.
 
 - Claude (directed by @KyNorthstar)
-    - 5 Fable - Writing code to unblock Ky, minor feature work 
-    - 5 Opus - Writing code to unblock Ky, minor bug work, minor feature work
+    - 5.1 Fable - Writing code to unblock, minor refactoring work
+    - 5 Fable - Writing code to unblock, minor feature work
+    - 5 Opus - Writing code to unblock, minor bug work, minor feature work
     - 5 Sonnet - Searches, minor algorithmic decisions
-    - 4.8 Opus - Writing code to unblock Ky
+    - 4.8 Opus - Writing code to unblock
 - Grok (autonomously on behalf of @VedantMadane)
     - _version undisclosed_ (2026-08-27) - Minor bug work
 - GPT (directed by @Zhoie)
